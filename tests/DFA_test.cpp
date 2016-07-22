@@ -146,8 +146,16 @@ TEST_F(TestDFA, DeadStateRemoval) {
     instance.addTransition("q2", "q2", 'c');
     instance.addTransition("q3", "q3", 'd');
     EXPECT_EQ(4, instance.size());
-    instance.removeDeadStates();
-    EXPECT_EQ(0, instance.size());
+    DFA other = instance.withoutDeadStates();
+    EXPECT_EQ(0, other.size());
+
+    instance.accept("q1");
+    other = instance.withoutDeadStates();
+    EXPECT_EQ(2, other.size());
+
+    instance.accept("q3");
+    other = instance.withoutDeadStates();
+    EXPECT_EQ(3, other.size());
 }
 
 // TEST_F(TestDFA, UnreachableStateRemoval) {

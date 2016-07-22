@@ -8,6 +8,7 @@
 #include "utils.hpp"
 
 class DFA;
+class IndexList;
 
 class State {
     friend class DFA;
@@ -100,7 +101,9 @@ public:
     // Returns a set containing all final states of this DFA.
     std::unordered_set<State> finalStates() const;
 
-    void removeDeadStates();
+    // Returns a DFA equivalent to this one, but without dead states.
+    // Complexity: O(n(m + n))
+    DFA withoutDeadStates();
 
     // Returns a state, given its index.
     State& operator[](const Index&);
@@ -115,8 +118,16 @@ private:
     bool errorState = true;
 
     void accept() {}
-    std::unordered_map<Index, Index> transitiveClosure() const;
-    std::unordered_set<State> getDeadStates() const;
+
+    // Returns an IndexList where each bit is 1 if the state is dead,
+    // 0 otherwise.
+    // Complexity: O(n(m + n))
+    IndexList getDeadStates() const;
+
+    // Executes breadth-first search on a state, returning a set
+    // containing all states that are reachable from it.
+    // Complexity: O(m)
+    std::unordered_set<Index> bfs(const State&) const;
 };
 
 #endif

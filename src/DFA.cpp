@@ -1,3 +1,4 @@
+#include <queue>
 #include "DFA.hpp"
 #include "IndexList.hpp"
 
@@ -81,8 +82,28 @@ std::unordered_set<State> DFA::finalStates() const {
 	return result;
 }
 
-void DFA::removeDeadStates() {
+DFA DFA::withoutDeadStates() {
+	IndexList deadStates = getDeadStates();
+	DFA result;
+	result.reserve(size());
+	for (auto& pair : states) {
+		if (!deadStates.isSet(pair.first)) {
+			result << pair.second;
+		}
+	}
 
+	for (auto& pair : states) {
+		if (!deadStates.isSet(pair.first)) {
+			auto& from = pair.second;
+			for (auto& transition : from.transitions) {
+				auto& to = transition.second;
+				if (!deadStates.isSet(to)) {
+					result.addTransition(from, states[to], transition.first);
+				}
+			}
+		}
+	}
+	return result;
 }
 
 State& DFA::operator[](const Index& index) {
@@ -98,16 +119,38 @@ DFA& DFA::operator<<(const State& state) {
 	return *this;
 }
 
-std::unordered_set<State> DFA::getDeadStates() const {
-	std::unordered_map<Index, Index> table = transitiveClosure();
+IndexList DFA::getDeadStates() const {
 	std::unordered_set<State> acceptingStates = finalStates();
-	IndexList blacklist;
-	for (auto& final : acceptingStates) {
-		for (auto& pair : states) {
-			if (table[states[state]][pair.first]) {
+	IndexList blacklist(size());
+	for (auto& pair : states) {
+		if (pair.second.accepts) {
+			blacklist.remove(pair.first);
+			continue;
+		}
+		std::unordered_set<Index> reachable = bfs(pair.second);
+		for (auto& final : acceptingStates) {
+			if (reachable.count(states[final]) > 0) {
 				blacklist.remove(pair.first);
 			}
 		}
 	}
-	removeStates(blacklist);
+	return blacklist;
+}
+
+std::unordered_set<DFA::Index> DFA::bfs(const State& state) const {
+	Index origin = states[state];
+	std::unordered_set<Index> result;
+	std::queue<Index> queue;
+	queue.push(origin);
+	while (!queue.empty()) {
+		Index current = queue.front();
+		queue.pop();
+		for (auto& pair : states[current].transitions) {
+			if (result.count(pair.second) == 0) {
+				result.insert(pair.second);
+				queue.push(pair.second);
+			}
+		}
+	}
+	return result;
 }
