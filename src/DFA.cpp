@@ -1,4 +1,5 @@
 #include "DFA.hpp"
+#include "IndexList.hpp"
 
 void DFA::reserve(std::size_t size) {
 	states.reserve(size);
@@ -80,6 +81,10 @@ std::unordered_set<State> DFA::finalStates() const {
 	return result;
 }
 
+void DFA::removeDeadStates() {
+
+}
+
 State& DFA::operator[](const Index& index) {
 	return states[index];
 }
@@ -91,4 +96,18 @@ DFA& DFA::operator<<(const State& state) {
 		reset();
 	}
 	return *this;
+}
+
+std::unordered_set<State> DFA::getDeadStates() const {
+	std::unordered_map<Index, Index> table = transitiveClosure();
+	std::unordered_set<State> acceptingStates = finalStates();
+	IndexList blacklist;
+	for (auto& final : acceptingStates) {
+		for (auto& pair : states) {
+			if (table[states[state]][pair.first]) {
+				blacklist.remove(pair.first);
+			}
+		}
+	}
+	removeStates(blacklist);
 }

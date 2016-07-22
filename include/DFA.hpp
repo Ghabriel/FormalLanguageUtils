@@ -100,6 +100,8 @@ public:
     // Returns a set containing all final states of this DFA.
     std::unordered_set<State> finalStates() const;
 
+    void removeDeadStates();
+
     // Returns a state, given its index.
     State& operator[](const Index&);
 
@@ -113,6 +115,8 @@ private:
     bool errorState = true;
 
     void accept() {}
+    std::unordered_map<Index, Index> transitiveClosure() const;
+    std::unordered_set<State> getDeadStates() const;
 };
 
 #endif
