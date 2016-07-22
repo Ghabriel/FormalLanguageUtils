@@ -82,16 +82,29 @@ std::unordered_set<State> DFA::finalStates() const {
 	return result;
 }
 
-DFA DFA::withoutDeadStates() {
+DFA DFA::withoutDeadStates() const {
 	return simplify(!getDeadStates());
 }
 
-DFA DFA::withoutUnreachableStates() {
-	std::unordered_set<Index> reachable;
-	if (size() > 0) {
-		reachable = bfs(states[initialStateIndex]);
-	}
-	return simplify(setToList(reachable));
+DFA DFA::withoutUnreachableStates() const {
+	return simplify(getReachableStates());
+}
+
+DFA DFA::withoutUselessStates() const {
+	return simplify(~getDeadStates() & getReachableStates());
+}
+
+DFA DFA::withoutEquivalentStates() {
+	auto classes = getEquivalenceClasses();
+	// TODO
+	TRACE(classes.size());
+	DFA result;
+	return result;
+}
+
+DFA DFA::minimized() const {
+	DFA clean = withoutUselessStates();
+	return clean.withoutEquivalentStates();
 }
 
 State& DFA::operator[](const Index& index) {
@@ -123,6 +136,73 @@ IndexList DFA::getDeadStates() const {
 		}
 	}
 	return blacklist;
+}
+
+IndexList DFA::getReachableStates() const {
+	std::unordered_set<Index> reachable;
+	if (size() > 0) {
+		reachable = bfs(states[initialStateIndex]);
+	}
+	return setToList(reachable);
+}
+
+std::queue<IndexList> DFA::getEquivalenceClasses() {
+	materializeErrorState();
+	auto sigma = alphabet();
+	auto finalSet = setToList(finalStates());
+
+	std::queue<IndexList> partitions;
+	std::queue<IndexList> helper;
+	std::unordered_set<IndexList> w;
+
+	partitions.push(finalSet);
+	partitions.push(IndexList(size()) - finalSet);
+	w.reserve(size());
+	w.insert(finalSet);
+
+	while (!w.empty()) {
+		IndexList list = *w.begin();
+		w.erase(list);
+		for (char c : sigma) {
+			auto predecessors = stateFilter(c, list);
+			while (!partitions.empty()) {
+				IndexList partition = partitions.front();
+				partitions.pop();
+				IndexList intersection = partition & predecessors;
+				IndexList difference = partition - predecessors;
+				if (intersection != 0 && difference != 0) {
+					partitions.push(intersection);
+					partitions.push(difference);
+				} else {
+					helper.push(partition);
+					continue;
+				}
+
+				if (w.count(partition) > 0) {
+					w.erase(partition);
+					w.insert(intersection);
+					w.insert(difference);
+				} else {
+					if (intersection.count() <= difference.count()) {
+						w.insert(intersection);
+					} else {
+						w.insert(difference);
+					}
+				}
+			}
+			partitions.swap(helper);
+		}
+	}
+	return partitions;
+}
+
+void DFA::materializeErrorState() {
+	// TODO
+}
+
+IndexList DFA::stateFilter(char, const IndexList&) const {
+	// TODO
+	return IndexList(size());
 }
 
 std::unordered_set<DFA::Index> DFA::bfs(const State& state) const {
@@ -171,6 +251,14 @@ IndexList DFA::setToList(const std::unordered_set<DFA::Index>& set) const {
 	IndexList list(size());
 	for (auto& index : set) {
 		list.remove(index);
+	}
+	return !list;
+}
+
+IndexList DFA::setToList(const std::unordered_set<State>& set) const {
+	IndexList list(size());
+	for (auto& state : set) {
+		list.remove(states[state]);
 	}
 	return !list;
 }

@@ -181,20 +181,21 @@ TEST_F(TestDFA, UnreachableStateRemoval) {
     EXPECT_EQ(0, empty.withoutUnreachableStates().size());
 }
 
-// TEST_F(TestDFA, Minimization) {
-//     instance << "q0";
-//     instance << "q1";
-//     instance << "q2";
-//     instance << "q3";
-//     instance.accept("q1");
-//     instance.addTransition("q0", "q1", 'a');
-//     instance.addTransition("q1", "q2", 'b');
-//     instance.addTransition("q2", "q2", 'c');
-//     instance.addTransition("q3", "q3", 'd');
-//     EXPECT_EQ(4, instance.size());
-//     instance.minimize();
-//     EXPECT_EQ(2, instance.size());
-// }
+TEST_F(TestDFA, Minimization) {
+    instance << "q0";
+    instance << "q1";
+    instance << "q2";
+    instance << "q3";
+    instance.accept("q1");
+    instance.addTransition("q0", "q1", 'a');
+    instance.addTransition("q1", "q2", 'b');
+    instance.addTransition("q2", "q2", 'c');
+    instance.addTransition("q3", "q3", 'd');
+    EXPECT_EQ(4, instance.size());
+    
+    DFA other = instance.minimized();
+    EXPECT_EQ(2, other.size());
+}
 
 // TEST_F(TestDFA, Complement) {
 //     instance << "q0";
