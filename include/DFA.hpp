@@ -102,8 +102,12 @@ public:
     std::unordered_set<State> finalStates() const;
 
     // Returns a DFA equivalent to this one, but without dead states.
-    // Complexity: O(n(m + n))
+    // Complexity: O(n(n + m))
     DFA withoutDeadStates();
+
+    // Returns a DFA equivalent to this one, but without unreachable states.
+    // Complexity: O(n + m)
+    DFA withoutUnreachableStates();
 
     // Returns a state, given its index.
     State& operator[](const Index&);
@@ -128,6 +132,13 @@ private:
     // containing all states that are reachable from it.
     // Complexity: O(m)
     std::unordered_set<Index> bfs(const State&) const;
+
+    // Receives a list of valid state indexes and returns a DFA
+    // equal to this one but only using the allowed states.
+    // Complexity: O(n + m)
+    DFA simplify(const IndexList&) const;
+
+    IndexList setToList(const std::unordered_set<Index>&) const;
 };
 
 #endif

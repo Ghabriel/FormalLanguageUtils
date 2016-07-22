@@ -83,27 +83,15 @@ std::unordered_set<State> DFA::finalStates() const {
 }
 
 DFA DFA::withoutDeadStates() {
-	IndexList deadStates = getDeadStates();
-	DFA result;
-	result.reserve(size());
-	for (auto& pair : states) {
-		if (!deadStates.isSet(pair.first)) {
-			result << pair.second;
-		}
-	}
+	return simplify(!getDeadStates());
+}
 
-	for (auto& pair : states) {
-		if (!deadStates.isSet(pair.first)) {
-			auto& from = pair.second;
-			for (auto& transition : from.transitions) {
-				auto& to = transition.second;
-				if (!deadStates.isSet(to)) {
-					result.addTransition(from, states[to], transition.first);
-				}
-			}
-		}
+DFA DFA::withoutUnreachableStates() {
+	std::unordered_set<Index> reachable;
+	if (size() > 0) {
+		reachable = bfs(states[initialStateIndex]);
 	}
-	return result;
+	return simplify(setToList(reachable));
 }
 
 State& DFA::operator[](const Index& index) {
@@ -141,6 +129,7 @@ std::unordered_set<DFA::Index> DFA::bfs(const State& state) const {
 	Index origin = states[state];
 	std::unordered_set<Index> result;
 	std::queue<Index> queue;
+	result.insert(origin);
 	queue.push(origin);
 	while (!queue.empty()) {
 		Index current = queue.front();
@@ -153,4 +142,35 @@ std::unordered_set<DFA::Index> DFA::bfs(const State& state) const {
 		}
 	}
 	return result;
+}
+
+DFA DFA::simplify(const IndexList& whitelist) const {
+	DFA result;
+	result.reserve(size());
+	for (auto& pair : states) {
+		if (whitelist.isSet(pair.first)) {
+			result << pair.second;
+		}
+	}
+
+	for (auto& pair : states) {
+		if (whitelist.isSet(pair.first)) {
+			auto& from = pair.second;
+			for (auto& transition : from.transitions) {
+				auto& to = transition.second;
+				if (whitelist.isSet(to)) {
+					result.addTransition(from, states[to], transition.first);
+				}
+			}
+		}
+	}
+	return result;
+}
+
+IndexList DFA::setToList(const std::unordered_set<DFA::Index>& set) const {
+	IndexList list(size());
+	for (auto& index : set) {
+		list.remove(index);
+	}
+	return !list;
 }

@@ -156,21 +156,30 @@ TEST_F(TestDFA, DeadStateRemoval) {
     instance.accept("q3");
     other = instance.withoutDeadStates();
     EXPECT_EQ(3, other.size());
+
+    DFA empty;
+    ASSERT_NO_THROW(empty.withoutDeadStates());
+    EXPECT_EQ(0, empty.withoutDeadStates().size());
 }
 
-// TEST_F(TestDFA, UnreachableStateRemoval) {
-//     instance << "q0";
-//     instance << "q1";
-//     instance << "q2";
-//     instance << "q3";
-//     instance.addTransition("q0", "q1", 'a');
-//     instance.addTransition("q1", "q2", 'b');
-//     instance.addTransition("q2", "q2", 'c');
-//     instance.addTransition("q3", "q3", 'd');
-//     EXPECT_EQ(4, instance.size());
-//     instance.removeUnreachableStates();
-//     EXPECT_EQ(3, instance.size());
-// }
+TEST_F(TestDFA, UnreachableStateRemoval) {
+    instance << "q0";
+    instance << "q1";
+    instance << "q2";
+    instance << "q3";
+    instance.addTransition("q0", "q1", 'a');
+    instance.addTransition("q1", "q2", 'b');
+    instance.addTransition("q2", "q2", 'c');
+    instance.addTransition("q3", "q3", 'd');
+    EXPECT_EQ(4, instance.size());
+
+    DFA other = instance.withoutUnreachableStates();
+    EXPECT_EQ(3, other.size());
+
+    DFA empty;
+    ASSERT_NO_THROW(empty.withoutUnreachableStates());
+    EXPECT_EQ(0, empty.withoutUnreachableStates().size());
+}
 
 // TEST_F(TestDFA, Minimization) {
 //     instance << "q0";
