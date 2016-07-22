@@ -61,6 +61,22 @@ namespace utils {
 			return ltr.size();
 		}
 
+		typename std::unordered_map<T1, T2>::iterator begin() {
+			return ltr.begin();
+		}
+
+		typename std::unordered_map<T1, T2>::const_iterator begin() const {
+			return ltr.cbegin();
+		}
+
+		typename std::unordered_map<T1, T2>::iterator end() {
+			return ltr.end();
+		}
+
+		typename std::unordered_map<T1, T2>::const_iterator end() const {
+			return ltr.cend();
+		}
+
 	private:
 		std::unordered_map<T1, T2> ltr;
 		std::unordered_map<T2, T1> rtl;

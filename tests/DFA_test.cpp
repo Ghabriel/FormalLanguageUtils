@@ -107,33 +107,34 @@ TEST_F(TestDFA, Size) {
     EXPECT_EQ(4, instance.size());
 }
 
-// TEST_F(TestDFA, Alphabet) {
-//     instance << "q0";
-//     instance << "q1";
-//     instance << "q2";
-//     instance.addTransition("q0", "q0", 'a');
-//     instance.addTransition("q0", "q0", 'c');
-//     instance.addTransition("q0", "q0", 'z');
-//     instance.addTransition("q0", "q1", 'b');
-//     instance.addTransition("q0", "q1", 'f');
-//     instance.addTransition("q1", "q1", 'd');
-//     instance.addTransition("q2", "q2", 'g');
-//     std::unordered_set<char> expected = {
-//         'a', 'c', 'z', 'b', 'f', 'd', 'g'
-//     };
-//     EXPECT_EQ(expected, instance.alphabet());
-// }
+TEST_F(TestDFA, Alphabet) {
+    instance << "q0";
+    instance << "q1";
+    instance << "q2";
+    instance.addTransition("q0", "q0", 'a');
+    instance.addTransition("q0", "q0", 'c');
+    instance.addTransition("q0", "q0", 'z');
+    instance.addTransition("q0", "q1", 'b');
+    instance.addTransition("q0", "q1", 'f');
+    instance.addTransition("q1", "q1", 'd');
+    instance.addTransition("q2", "q2", 'g');
+    std::unordered_set<char> expected = {
+        'a', 'c', 'z', 'b', 'f', 'd', 'g'
+    };
+    EXPECT_EQ(expected, instance.alphabet());
+}
 
-// TEST_F(TestDFA, AcceptingStates) {
-//     instance << "q0";
-//     instance << "q1";
-//     instance << "q2";
-//     instance << "q3";
-//     instance << "q4";
-//     instance.accept("q1", "q2", "q4");
-//     std::unordered_set<State> expected = {"q1", "q2", "q4"};
-//     EXPECT_EQ(expected, instance.finalStates());
-// }
+TEST_F(TestDFA, AcceptingStates) {
+    instance << "q0";
+    instance << "q1";
+    instance << "q2";
+    instance << "q3";
+    instance << "q4";
+    instance.accept("q1", "q2", "q4");
+    std::unordered_set<State> expected = {"q1", "q2", "q4"};
+    EXPECT_EQ(3, instance.finalStates().size());
+    EXPECT_EQ(expected, instance.finalStates());
+}
 
 // TEST_F(TestDFA, DeadStateRemoval) {
 //     instance << "q0";

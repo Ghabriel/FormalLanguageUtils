@@ -21,7 +21,7 @@ public:
 
 private:
     std::string name;
-    bool accepts;
+    bool accepts = false;
     std::unordered_map<char, utils::Index> transitions;
 };
 
@@ -58,9 +58,17 @@ public:
     // Sets the initial state.
     void initialState(const State&);
 
-    // Marks a state as final.
-    void accept(State&);
-    void accept(State&&);
+    // Marks a (set of) state(s) as final.
+    template<typename... Args>
+    void accept(State& state, Args... args) {
+        state.accepts = true;
+        accept(args...);
+    }
+    template<typename... Args>
+    void accept(State&& state, Args... args) {
+        states[states[state]].accepts = true;
+        accept(args...);
+    }
 
     // Returns the current state of this DFA. Undefined behavior
     // if it has no states (check with size()). Note that if this
@@ -89,6 +97,9 @@ public:
     // Returns all characters used in transitions in this DFA.
     std::unordered_set<char> alphabet() const;
 
+    // Returns a set containing all final states of this DFA.
+    std::unordered_set<State> finalStates() const;
+
     // Returns a state, given its index.
     State& operator[](const Index&);
 
@@ -100,6 +111,8 @@ private:
     Index currentState;
     Index initialStateIndex;
     bool errorState = true;
+
+    void accept() {}
 };
 
 #endif

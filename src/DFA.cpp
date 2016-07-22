@@ -20,14 +20,6 @@ void DFA::initialState(const State& state) {
 	initialStateIndex = states[state];
 }
 
-void DFA::accept(State& state) {
-	state.accepts = true;
-}
-
-void DFA::accept(State&& state) {
-	state.accepts = true;
-}
-
 State& DFA::state() {
 	return states[currentState];
 }
@@ -66,6 +58,26 @@ bool DFA::accepts() const {
 DFA& DFA::addTransition(const State& from, const State& to, char input) {
 	states[states[from]].transitions[input] = states[to];
 	return *this;
+}
+
+std::unordered_set<char> DFA::alphabet() const {
+	std::unordered_set<char> result;
+	for (auto& pair : states) {
+		for (auto& p : pair.second.transitions) {
+			result.insert(p.first);
+		}
+	}
+	return result;
+}
+
+std::unordered_set<State> DFA::finalStates() const {
+	std::unordered_set<State> result;
+	for (auto& pair : states) {
+		if (pair.second.accepts) {
+			result.insert(pair.second);
+		}
+	}
+	return result;
 }
 
 State& DFA::operator[](const Index& index) {
