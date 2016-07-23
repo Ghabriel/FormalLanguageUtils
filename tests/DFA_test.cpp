@@ -268,7 +268,7 @@ TEST_F(TestDFA, Complement) {
 //     second.addTransition("q1", "q0", 'a');
 //     second.accept("q0");
 
-//     DFA intersection = instance && second;
+//     DFA intersection = instance  & second;
 //     EXPECT_EQ(6, intersection.size());
 //     EXPECT_TRUE(intersection.accepts());
 //     intersection.read("a");
@@ -285,15 +285,15 @@ TEST_F(TestDFA, Complement) {
 //     EXPECT_TRUE(intersection.accepts());
 // }
 
-// TEST_F(TestDFA, Emptyness) {
-//     EXPECT_TRUE(instance.empty());
-//     instance << "q0";
-//     EXPECT_TRUE(instance.empty());
-//     instance.accepts("q0");
-//     EXPECT_TRUE(instance.empty());
-//     instance.addTransition("q0", "q0", 'a');
-//     EXPECT_FALSE(instance.empty());
-// }
+TEST_F(TestDFA, Emptyness) {
+    EXPECT_TRUE(instance.empty());
+    instance << "q0";
+    EXPECT_TRUE(instance.empty());
+    instance.accept("q0");
+    EXPECT_FALSE(instance.empty());
+    instance.addTransition("q0", "q0", 'a');
+    EXPECT_FALSE(instance.empty());
+}
 
 // TEST_F(TestDFA, Equivalence) {
 //     instance << "q0";

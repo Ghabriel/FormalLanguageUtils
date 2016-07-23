@@ -155,13 +155,27 @@ DFA DFA::minimized() const {
 	return clean.withoutEquivalentStates();
 }
 
+bool DFA::empty() const {
+	std::unordered_set<Index> reachable;
+	if (size() > 0) {
+		reachable = bfs(states[initialStateIndex]);
+	}
+
+	for (auto& index : reachable) {
+		if (states[index].accepts) {
+			return false;
+		}
+	}
+	return true;
+}
+
 DFA DFA::operator~() const {
 	DFA result = simplify(IndexList(size()));
 	result.materializeErrorState();
 	for (auto& pair : result.states) {
 		pair.second.accepts = !pair.second.accepts;
 		if (pair.second.getName() == errorStateName) {
-			pair.second.name = "m_error" + std::to_string(result.size());
+			pair.second.name = "m_error" + std::to_string(pair.first);
 		}
 	}
 	return result;
@@ -308,6 +322,12 @@ void DFA::materializeErrorState() {
 				}
 				transitions[c] = errorIndex;
 			}
+		}
+	}
+
+	if (created) {
+		for (char c : sigma) {
+			addTransition(errorStateName, errorStateName, c);
 		}
 	}
 }

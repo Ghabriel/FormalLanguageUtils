@@ -136,6 +136,10 @@ public:
     // Complexity: O(n(n + m + k.log n)), where k is the size of the alphabet
     DFA minimized() const;
 
+    // Checks if this DFA is empty, i.e, doesn't accept anything.
+    // Complexity: O(m)
+    bool empty() const;
+
     // Returns the complement of this DFA.
     // Complexity: O(kn + m), where k is the size of the alphabet
     DFA operator~() const;

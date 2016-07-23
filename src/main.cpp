@@ -12,6 +12,7 @@ int main(int, char**) {
     instance << "q2";
     instance.addTransition("q0", "q1", 'a');
     instance.addTransition("q1", "q2", 'a');
+    instance.addTransition("q1", "q2", 'b');
     instance.addTransition("q2", "q0", 'a');
     instance.accept("q0");
     instance.debug();
@@ -20,4 +21,5 @@ int main(int, char**) {
     DFA complement;
     complement = ~instance;
     complement.debug();
+    TRACE(complement.size());
 }
