@@ -26,6 +26,25 @@ State& DFA::state() {
 	return states[currentState];
 }
 
+DFA& DFA::removeState(const State& state) {
+	Index& index = states[state];
+	for (auto& pair : states) {
+		State& state = pair.second;
+		auto& transitions = state.transitions;
+		auto it = transitions.begin();
+		while (it != transitions.end()) {
+			Index& to = (*it).second;
+			if (to == index) {
+				it = state.transitions.erase(it);
+			} else {
+				it++;
+			}
+		}
+	}
+	states.erase(index);
+	return *this;
+}
+
 void DFA::reset() {
 	if (states.size() > 0) {
 		currentState = initialStateIndex;
@@ -62,13 +81,16 @@ DFA& DFA::addTransition(const State& from, const State& to, char input) {
 	return *this;
 }
 
+DFA& DFA::removeTransition(const State& from, char input) {
+	states[states[from]].transitions.erase(input);
+	return *this;
+}
+
 std::unordered_set<char> DFA::alphabet() const {
 	std::unordered_set<char> result;
-	for (auto& pair : states) {
-		for (auto& p : pair.second.transitions) {
-			result.insert(p.first);
-		}
-	}
+	transitionTraversal([&](const Index&, const Index&, char c) {
+		result.insert(c);
+	});
 	return result;
 }
 
@@ -118,14 +140,11 @@ DFA DFA::withoutEquivalentStates() {
 		}
 	}
 
-	for (auto& pair : states) {
-		for (auto& transition : pair.second.transitions) {
-			result.addTransition(result[stateMapping[pair.first]],
-								 result[stateMapping[transition.second]],
-								 transition.first);
-		}
-	}
-
+	transitionTraversal([&](const Index& from, const Index& to, char c) {
+		result.addTransition(result[stateMapping[from]],
+							 result[stateMapping[to]],
+							 c);
+	});
 	return result;
 }
 
@@ -222,22 +241,45 @@ std::queue<IndexList> DFA::getEquivalenceClasses() {
 			partitions.swap(helper);
 		}
 	}
+
+	Index errorIndex = size() - 1;
+	while (!partitions.empty()) {
+		IndexList partition = partitions.front();
+		partitions.pop();
+		if (!partition.isSet(errorIndex)) {
+			helper.push(partition);
+		}
+	}
+
+	partitions.swap(helper);
+	removeState(states[errorIndex]);
 	return partitions;
 }
 
 void DFA::materializeErrorState() {
-	// TODO
+	if (states.count(errorStateName) != 0) {
+		return;
+	}
+	Index errorIndex = size();
+	*this << State(errorStateName);
+	std::unordered_set<char> sigma = alphabet();
+	for (auto& pair : states) {
+		auto& transitions = pair.second.transitions;
+		for (char c : sigma) {
+			if (transitions.count(c) == 0) {
+				transitions[c] = errorIndex;
+			}
+		}
+	}
 }
 
 IndexList DFA::stateFilter(char input, const IndexList& list) const {
 	IndexList result(size());
-	for (auto& pair : states) {
-		for (auto& transition : pair.second.transitions) {
-			if (transition.first == input && list.isSet(transition.second)) {
-				result.remove(pair.first);
-			}
+	transitionTraversal([&](const Index& from, const Index& to, char c) {
+		if (c == input && list.isSet(to)) {
+			result.remove(from);
 		}
-	}
+	});
 	return ~result;
 }
 
@@ -297,4 +339,14 @@ IndexList DFA::setToList(const std::unordered_set<State>& set) const {
 		list.remove(states[state]);
 	}
 	return ~list;
+}
+
+void DFA::transitionTraversal(
+	const std::function<void(const DFA::Index&, const DFA::Index&, char)>& fn) const {
+
+	for (auto& pair : states) {
+		for (auto& transition : pair.second.transitions) {
+			fn(pair.first, transition.second, transition.first);
+		}
+	}
 }

@@ -18,7 +18,7 @@
 #define ECHO(x) std::cout << (x) << std::endl
 
 namespace utils {
-    using Index = unsigned;
+    using Index = long;
 
 	template<typename T1, typename T2>
 	class bimap {
@@ -31,6 +31,18 @@ namespace utils {
 		void insert(const T1& first, const T2& second) {
 			ltr[first] = second;
 			rtl[second] = first;
+		}
+
+		void erase(const T1& key) {
+			auto& value = (*this)[key];
+			ltr.erase(key);
+			rtl.erase(value);
+		}
+
+		void erase(const T2& key) {
+			auto& value = (*this)[key];
+			ltr.erase(value);
+			rtl.erase(key);
 		}
 
 		unsigned count(const T1& value) const {
