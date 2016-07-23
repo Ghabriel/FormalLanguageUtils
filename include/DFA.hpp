@@ -113,12 +113,16 @@ public:
     // Returns a DFA equivalent to this one, but without useless states.
     // Has the same effect as withoutDeadStates().withoutUnreachableStates()
     // but is faster.
+    // Complexity: O(n(n + m))
     DFA withoutUselessStates() const;
 
+    // Returns a DFA equivalent to this one, but without equivalent states.
     // TODO: find a way to make this const
+    // Complexity: O(kn.log n + m), where k is the size of the alphabet
     DFA withoutEquivalentStates();
 
     // Returns the minimized form of this DFA.
+    // Complexity: O(n(n + m + k.log n)), where k is the size of the alphabet
     DFA minimized() const;
 
     // Returns a state, given its index.
@@ -150,7 +154,7 @@ private:
 
     // Returns the equivalence classes of this DFA.
     // TODO: find a way to make this const
-    // Complexity: O(an.log n), where a is the size of the alphabet
+    // Complexity: O(kn.log n), where k is the size of the alphabet
     std::queue<IndexList> getEquivalenceClasses();
 
     void materializeErrorState();
