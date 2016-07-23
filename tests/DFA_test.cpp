@@ -285,6 +285,39 @@ TEST_F(TestDFA, Intersection) {
     EXPECT_TRUE(intersection.accepts());
 }
 
+TEST_F(TestDFA, Union) {
+    instance << "q0";
+    instance << "q1";
+    instance << "q2";
+    instance.addTransition("q0", "q1", 'a');
+    instance.addTransition("q1", "q2", 'a');
+    instance.addTransition("q2", "q0", 'a');
+    instance.accept("q0");
+
+    DFA second;
+    second << "q0";
+    second << "q1";
+    second.addTransition("q0", "q1", 'a');
+    second.addTransition("q1", "q0", 'a');
+    second.accept("q0");
+
+    DFA unionDFA = instance | second;
+    EXPECT_EQ(6, unionDFA.size());
+    EXPECT_TRUE(unionDFA.accepts());
+    unionDFA.read("a");
+    EXPECT_FALSE(unionDFA.accepts());
+    unionDFA.read("a");
+    EXPECT_TRUE(unionDFA.accepts());
+    unionDFA.read("a");
+    EXPECT_TRUE(unionDFA.accepts());
+    unionDFA.read("a");
+    EXPECT_TRUE(unionDFA.accepts());
+    unionDFA.read("a");
+    EXPECT_FALSE(unionDFA.accepts());
+    unionDFA.read("a");
+    EXPECT_TRUE(unionDFA.accepts());
+}
+
 TEST_F(TestDFA, Emptyness) {
     EXPECT_TRUE(instance.empty());
     instance << "q0";

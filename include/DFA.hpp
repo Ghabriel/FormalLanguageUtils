@@ -148,6 +148,10 @@ public:
     // Complexity: O((m1 + m2).(k1 + k2))
     DFA operator&(DFA& other);
 
+    // Returns the union between this and another DFA.
+    // Complexity: O((m1 + m2).(k1 + k2))
+    DFA operator|(DFA& other);
+
     // Returns a state, given its index.
     State& operator[](const Index&);
 
@@ -204,9 +208,16 @@ private:
     // Complexity: O(n + m)
     DFA simplify(const IndexList&) const;
 
+    // Converts an unordered set to an IndexList
     IndexList setToList(const std::unordered_set<Index>&) const;
     IndexList setToList(const std::unordered_set<State>&) const;
 
+    // Builds the product construction between this and another DFA,
+    // using a given heuristic to decide which states are final.
+    // Complexity: O((m1 + m2).(k1 + k2))
+    DFA productConstruction(DFA&, const std::function<bool(const std::pair<Index, Index>&)>&);
+
+    // Traverses over all transitions of this DFA, applying a callback on each.
     void transitionTraversal(const std::function<void(const Index&, const Index&, char)>&) const;
 };
 
