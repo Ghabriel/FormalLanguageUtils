@@ -1,92 +1,91 @@
-# Created by aszdrick graf <aszdrick@gmail.com>
-# Compiler
-CXX       :=gcc
-LDLIBS    :=-lstdc++ -lm `pkg-config --libs gtk+-3.0` -lgtest -pthread
-LDFLAGS   :=
-CXXFLAGS  :=`pkg-config --cflags gtk+-3.0` -O3 -std=c++11 -Wall
-# Source directory
+########################## Created by Aszdrick Graf ###########################
+############################ <aszdrick@gmail.com> #############################
+###############################################################################
+
+################################## VARIABLES ##################################
+# Directories
 SRCDIR    :=src
-# Headers directory
 HDRDIR    :=include
-# Build directory
 BUILDIR   :=build
-# Binaries directory
 BINDIR    :=bin
-# Tests directory
 TESTDIR   :=tests
-# Main file
-MAIN      :=main
-#Include flag
-INCLUDE   :=-I$(HDRDIR) -I$(HDRDIR)/shapes
-# Sources
+DEPDIR    :=.deps
+# Compiler & linker flags
+LDLIBS    :=-lm -lgtest -pthread
+LDFLAGS   :=
+CXXFLAGS  :=-std=c++11 -Wall -O3
+INCLUDE   :=-I$(HDRDIR)
+# Files
 SRC       :=$(shell find $(SRCDIR) -name '*.cpp')
-# Test(s) source(s)
-TESTSRC   :=$(shell find $(TESTDIR) -name '*.cpp')
-# Dependencies
-DEP       :=$(SRC:.cpp=.d) $(TESTSRC:.cpp=.d)
-# Objects
-OBJ       :=$(patsubst $(SRCDIR)/%.cpp,$(BUILDIR)/%.o,$(SRC))
-# Pure objects, without main
-PUREOBJ   :=$(filter-out $(BUILDIR)/$(MAIN).o,$(OBJ))
-# Test(s) object(s)
-TESTOBJ     :=$(patsubst %.cpp,$(BUILDIR)/%.o,$(TESTSRC))
-# Program executable
-EXEC      :=$(BINDIR)/exec
-# Test(s) executable(s)
-TESTS     :=$(patsubst $(TESTDIR)/%.cpp,$(BINDIR)/%,$(TESTSRC))
+DEP       :=$(patsubst %.cpp,$(DEPDIR)/%.d,$(SRC))
+OBJ       :=$(patsubst %.cpp,$(BUILDIR)/%.o,$(SRC))
+MAIN      :=main
+EXEC      :=$(BINDIR)/executable
+PUREOBJ   :=$(filter-out $(BUILDIR)/$(SRCDIR)/$(MAIN).o,$(OBJ))
+TSTFILE   :=$(shell find $(TESTDIR) -name '*.cpp')
+TSTDEP    :=$(patsubst %.cpp,$(DEPDIR)/%.d,$(TSTFILE))
+TSTOBJ    :=$(patsubst %.cpp,$(BUILDIR)/%.o,$(TSTFILE))
+TSTEXEC   :=$(patsubst $(TESTDIR)/%.cpp,$(BINDIR)/%,$(TSTFILE))
+# Utilities
+GETDEPCOM :='$(CXX) -MM $(INCLUDE) $(CXXFLAGS)'
 
-.PHONY: all makedir tests clean clean_all
+.PHONY: all makedir clean clean_deps clean_all tests
 
+################################# MAIN MODULE #################################
 all: makedir $(EXEC)
 
 $(EXEC): $(OBJ)
 	@echo "[linking] $@"
 	@$(CXX) $(OBJ) -o $@ $(LDLIBS) $(LDFLAGS)
 
-$(BUILDIR)/%.o: $(SRCDIR)/%.cpp
-	@echo "[  $(CXX)  ] $< -> .o"
-	@mkdir -p $(BUILDIR)/$(*D)
-	@$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
-
-makedir: | $(BUILDIR) $(BINDIR)
-
-$(BINDIR) $(BUILDIR):
-	@echo "[ mkdir ] Creating directory '$@'"
-	@mkdir -p $@
-
-# For each .cpp file, creates a .d file with all dependencies of .cpp,
-# including .d as target (to ensure updated dependencies, in case of
-# adding a new include or nested include)
-$(SRCDIR)/%.d: $(SRCDIR)/%.cpp
-	@echo "[makedep] $< -> .d"
-	@$(CXX) -MM -MP -MT "$(BUILDIR)/$*.o $@" -MF "$@" $< $(INCLUDE) $(CXXFLAGS)
-
-tests: makedir $(TESTS)
-
-$(TESTS): $(PUREOBJ) $(TESTOBJ)
-	@echo "[linking] $@"
-	@$(CXX) $(PUREOBJ) $(BUILDIR)/$(TESTDIR)/$(@F).o -o $@ $(LDLIBS) $(LDFLAGS)
-
 $(BUILDIR)/%.o: %.cpp
 	@echo "[  $(CXX)  ] $< -> .o"
 	@mkdir -p $(BUILDIR)/$(*D)
 	@$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
 
-$(TESTDIR)/%.d: $(TESTDIR)/%.cpp
+# For each .cpp file, creates a .d file with all dependencies of .cpp,
+# including .d as target (to ensure up-to-date dependencies, in case of
+# new includes being added. Wouldn't be necessary if dependencies 
+# tracking were made in the same call of compiler with this:
+# -MMD -MT "$@" -MF "$(DEPDIR)/$*.d")
+$(DEPDIR)/%.d: %.cpp
 	@echo "[makedep] $< -> .d"
-	@$(CXX) -MM -MP -MT "$(BUILDIR)/$(TESTDIR)$*.o $@" -MF "$@" $< $(INCLUDE) $(CXXFLAGS)
+	@mkdir -p $(DEPDIR)/$(*D)
+	@$(CXX) -MM -MP -MT "$(BUILDIR)/$*.o $@" -MF "$@" $< $(INCLUDE) $(CXXFLAGS)
+	
 
+makedir: | $(BINDIR) $(BUILDIR)
+
+$(BINDIR) $(BUILDIR) $(DEPDIR):
+	@echo "[ mkdir ] Creating directory '$@'"
+	@mkdir -p $@
+
+################################ TESTS MODULE #################################
+tests: makedir $(TSTEXEC)
+
+$(TSTEXEC): $(PUREOBJ) $(TSTOBJ)
+	@echo "[linking] $@"
+	@$(CXX) $(PUREOBJ) $(BUILDIR)/$(TESTDIR)/$(@F).o -o $@ $(LDLIBS) $(LDFLAGS)
+
+################################ CLEAN MODULE #################################
 # Only remove object files
 clean:
 	@$(RM) -r $(BUILDIR)
 
-# Remove object, binary and dependency files
-clean_all:
-	@$(RM) -r $(BUILDIR)
-	@$(RM) -r $(BINDIR)
-	@$(RM) -r $(DEP)
+# Only remove dependency files
+clean_deps:
+	@$(RM) -r $(DEPDIR)
 
+# Remove object, binary and dependency files
+clean_all: clean clean_deps
+	@$(RM) -r $(BINDIR)
+
+################################## INCLUDES ###################################
 # Do not include list of dependencies if make was called with target clean_all
+# or clean_deps
 ifneq ($(MAKECMDGOALS), clean_all)
+ifneq ($(MAKECMDGOALS), clean_deps)
 -include $(DEP)
+-include $(TSTDEP)
+endif
 endif

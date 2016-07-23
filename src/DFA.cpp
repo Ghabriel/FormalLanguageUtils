@@ -2,6 +2,8 @@
 #include "DFA.hpp"
 #include "IndexList.hpp"
 
+const std::string DFA::errorStateName = "__ERROR__";
+
 void DFA::reserve(std::size_t size) {
 	states.reserve(size);
 }
@@ -153,6 +155,18 @@ DFA DFA::minimized() const {
 	return clean.withoutEquivalentStates();
 }
 
+DFA DFA::operator~() const {
+	DFA result = simplify(IndexList(size()));
+	result.materializeErrorState();
+	for (auto& pair : result.states) {
+		pair.second.accepts = !pair.second.accepts;
+		if (pair.second.getName() == errorStateName) {
+			pair.second.name = "m_error" + std::to_string(result.size());
+		}
+	}
+	return result;
+}
+
 State& DFA::operator[](const Index& index) {
 	return states[index];
 }
@@ -168,6 +182,27 @@ DFA& DFA::operator<<(const State& state) {
 		reset();
 	}
 	return *this;
+}
+
+void DFA::debug() const {
+	Index lastIndex = -1;
+	transitionTraversal([&](const Index& from, const Index& to, char input) {
+		if (from != lastIndex) {
+			std::string prefix;
+			if (from == currentState) {
+				prefix += "!";
+			}
+			if (from == initialStateIndex) {
+				prefix += "->";
+			}
+			if (states[from].accepts) {
+				prefix += "*";
+			}
+			ECHO(prefix + states[from].getName() + ":");
+			lastIndex = from;
+		}
+		ECHO("\t" + states[from].getName() + " -> " + states[to].getName() + " (" + std::string(1, input) + ")");
+	});
 }
 
 IndexList DFA::getDeadStates() const {
@@ -260,13 +295,17 @@ void DFA::materializeErrorState() {
 	if (states.count(errorStateName) != 0) {
 		return;
 	}
+	bool created = false;
 	Index errorIndex = size();
-	*this << State(errorStateName);
 	std::unordered_set<char> sigma = alphabet();
 	for (auto& pair : states) {
 		auto& transitions = pair.second.transitions;
 		for (char c : sigma) {
 			if (transitions.count(c) == 0) {
+				if (!created) {
+					*this << State(errorStateName);
+					created = true;
+				}
 				transitions[c] = errorIndex;
 			}
 		}
@@ -308,6 +347,9 @@ DFA DFA::simplify(const IndexList& whitelist) const {
 	for (auto& pair : states) {
 		if (whitelist.isSet(pair.first)) {
 			result << pair.second;
+			if (initialStateIndex == pair.first) {
+				result.initialStateIndex = result.states[pair.second];
+			}
 		}
 	}
 
@@ -322,6 +364,7 @@ DFA DFA::simplify(const IndexList& whitelist) const {
 			}
 		}
 	}
+	result.reset();
 	return result;
 }
 

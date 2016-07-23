@@ -136,6 +136,10 @@ public:
     // Complexity: O(n(n + m + k.log n)), where k is the size of the alphabet
     DFA minimized() const;
 
+    // Returns the complement of this DFA.
+    // Complexity: O(kn + m), where k is the size of the alphabet
+    DFA operator~() const;
+
     // Returns a state, given its index.
     State& operator[](const Index&);
 
@@ -145,13 +149,15 @@ public:
     // Adds a state to this DFA, returning itself to allow chaining.
     DFA& operator<<(const State&);
 
+    // Prints all relevant information about this DFA.
+    void debug() const;
+
 private:
     utils::bimap<Index, State> states;
     Index currentState;
     Index initialStateIndex;
     bool errorState = true;
-
-    std::string errorStateName = "__ERROR__";
+    const static std::string errorStateName;
 
     void accept() {}
 
@@ -170,8 +176,9 @@ private:
     std::queue<IndexList> getEquivalenceClasses();
 
     // Adds a state to this DFA representing the error state,
-    // making this DFA complete.
-    // Complexity: O(m + kn), where k is the size of the alphabet
+    // making this DFA complete. Note that, if this DFA is already complete,
+    // no state is added.
+    // Complexity: O(kn + m), where k is the size of the alphabet
     void materializeErrorState();
 
     // Returns the set of states that, when reading a given input,

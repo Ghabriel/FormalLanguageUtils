@@ -219,34 +219,38 @@ TEST_F(TestDFA, Minimization) {
     EXPECT_EQ(3, minimized.size());
 }
 
-// TEST_F(TestDFA, Complement) {
-//     instance << "q0";
-//     instance << "q1";
-//     instance << "q2";
-//     instance.addTransition("q0", "q1", 'a');
-//     instance.addTransition("q1", "q2", 'a');
-//     instance.addTransition("q2", "q0", 'a');
-//     instance.accept("q0");
+TEST_F(TestDFA, Complement) {
+    instance << "q0";
+    instance << "q1";
+    instance << "q2";
+    instance.addTransition("q0", "q1", 'a');
+    instance.addTransition("q1", "q2", 'a');
+    instance.addTransition("q2", "q0", 'a');
+    instance.accept("q0");
 
-//     DFA complement = !instance;
+    DFA complement;
+    ASSERT_NO_THROW(complement = ~instance);
 
-//     EXPECT_EQ(3, complement.size());
+    EXPECT_EQ(3, complement.size());
 
-//     EXPECT_TRUE(instance.accepts());
-//     EXPECT_FALSE(instance.accepts());
+    EXPECT_TRUE(instance.accepts());
+    EXPECT_FALSE(complement.accepts());
 
-//     instance.read("a");
-//     EXPECT_FALSE(instance.accepts());
-//     EXPECT_TRUE(instance.accepts());
+    instance.read("a");
+    complement.read("a");
+    EXPECT_FALSE(instance.accepts());
+    EXPECT_TRUE(complement.accepts());
 
-//     instance.read("a");
-//     EXPECT_FALSE(instance.accepts());
-//     EXPECT_TRUE(instance.accepts());
+    instance.read("a");
+    complement.read("a");
+    EXPECT_FALSE(instance.accepts());
+    EXPECT_TRUE(complement.accepts());
 
-//     instance.read("a");
-//     EXPECT_TRUE(instance.accepts());
-//     EXPECT_FALSE(instance.accepts());
-// }
+    instance.read("a");
+    complement.read("a");
+    EXPECT_TRUE(instance.accepts());
+    EXPECT_FALSE(complement.accepts());
+}
 
 // TEST_F(TestDFA, Intersection) {
 //     instance << "q0";
