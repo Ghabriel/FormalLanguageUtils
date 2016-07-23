@@ -175,10 +175,68 @@ DFA DFA::operator~() const {
 	for (auto& pair : result.states) {
 		pair.second.accepts = !pair.second.accepts;
 		if (pair.second.getName() == errorStateName) {
-			pair.second.name = "m_error" + std::to_string(pair.first);
+			pair.second.name = "m__error" + std::to_string(pair.first);
 		}
 	}
 	return result;
+}
+
+DFA DFA::operator&(DFA& other) {
+    materializeErrorState();
+    other.materializeErrorState();
+    auto sigma1 = alphabet();
+    auto sigma2 = other.alphabet();
+    std::unordered_set<State> addedStates;
+    std::vector<std::pair<Index, Index>> addedPairs;
+    std::queue<std::pair<Index, Index>> stateList;
+    std::pair<Index, Index> init = {initialStateIndex, other.initialStateIndex};
+    DFA result;
+
+    auto format = [&](const std::pair<Index, Index>& state) {
+        return states[state.first].getName() + "__" + states[state.second].getName();
+    };
+
+    auto apply = [&](const std::pair<Index, Index>& state, char input) {
+        return std::make_pair(states[state.first].transitions[input],
+                              other.states[state.second].transitions[input]);
+    };
+
+    stateList.push(init);
+    while (!stateList.empty()) {
+        auto& pair = stateList.front();
+        stateList.pop();
+
+        auto before = addedStates.size();
+        auto state = format(pair);
+        addedStates.insert(state);
+        if (addedStates.size() != before) {
+            result << state;
+            for (char c : sigma1) {
+                auto newPair = apply(pair, c);
+                addedPairs.push_back(newPair);
+                stateList.push(newPair);
+            }
+            for (char c : sigma2) {
+                auto newPair = apply(pair, c);
+                addedPairs.push_back(newPair);
+                stateList.push(newPair);
+            }
+        }
+    }
+
+    for (auto& pair : addedPairs) {
+        std::string state = format(pair);
+        for (char c : sigma1) {
+            result.addTransition(state, format(apply(pair, c)), c);
+        }
+        for (char c : sigma2) {
+            result.addTransition(state, format(apply(pair, c)), c);
+        }
+        if (states[pair.first].accepts && other.states[pair.second].accepts) {
+            result.accept(state);
+        }
+    }
+    return result;
 }
 
 State& DFA::operator[](const Index& index) {

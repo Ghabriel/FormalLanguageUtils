@@ -252,38 +252,38 @@ TEST_F(TestDFA, Complement) {
     EXPECT_FALSE(complement.accepts());
 }
 
-// TEST_F(TestDFA, Intersection) {
-//     instance << "q0";
-//     instance << "q1";
-//     instance << "q2";
-//     instance.addTransition("q0", "q1", 'a');
-//     instance.addTransition("q1", "q2", 'a');
-//     instance.addTransition("q2", "q0", 'a');
-//     instance.accept("q0");
+TEST_F(TestDFA, Intersection) {
+    instance << "q0";
+    instance << "q1";
+    instance << "q2";
+    instance.addTransition("q0", "q1", 'a');
+    instance.addTransition("q1", "q2", 'a');
+    instance.addTransition("q2", "q0", 'a');
+    instance.accept("q0");
 
-//     DFA second;
-//     second << "q0";
-//     second << "q1";
-//     second.addTransition("q0", "q1", 'a');
-//     second.addTransition("q1", "q0", 'a');
-//     second.accept("q0");
+    DFA second;
+    second << "q0";
+    second << "q1";
+    second.addTransition("q0", "q1", 'a');
+    second.addTransition("q1", "q0", 'a');
+    second.accept("q0");
 
-//     DFA intersection = instance  & second;
-//     EXPECT_EQ(6, intersection.size());
-//     EXPECT_TRUE(intersection.accepts());
-//     intersection.read("a");
-//     EXPECT_FALSE(intersection.accepts());
-//     intersection.read("a");
-//     EXPECT_FALSE(intersection.accepts());
-//     intersection.read("a");
-//     EXPECT_FALSE(intersection.accepts());
-//     intersection.read("a");
-//     EXPECT_FALSE(intersection.accepts());
-//     intersection.read("a");
-//     EXPECT_FALSE(intersection.accepts());
-//     intersection.read("a");
-//     EXPECT_TRUE(intersection.accepts());
-// }
+    DFA intersection = instance & second;
+    EXPECT_EQ(6, intersection.size());
+    EXPECT_TRUE(intersection.accepts());
+    intersection.read("a");
+    EXPECT_FALSE(intersection.accepts());
+    intersection.read("a");
+    EXPECT_FALSE(intersection.accepts());
+    intersection.read("a");
+    EXPECT_FALSE(intersection.accepts());
+    intersection.read("a");
+    EXPECT_FALSE(intersection.accepts());
+    intersection.read("a");
+    EXPECT_FALSE(intersection.accepts());
+    intersection.read("a");
+    EXPECT_TRUE(intersection.accepts());
+}
 
 TEST_F(TestDFA, Emptyness) {
     EXPECT_TRUE(instance.empty());
@@ -300,7 +300,7 @@ TEST_F(TestDFA, Emptyness) {
 //     instance << "q1";
 //     instance.addTransition("q0", "q1", 'a');
 //     instance.accept("q1");
-//     EXPECT_EQ(!!instance, instance);
+//     EXPECT_EQ(~~instance, instance);
 // }
 
 int main(int argc, char** argv) {

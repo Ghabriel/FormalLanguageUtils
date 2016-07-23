@@ -144,6 +144,10 @@ public:
     // Complexity: O(kn + m), where k is the size of the alphabet
     DFA operator~() const;
 
+    // Returns the intersection between this and another DFA.
+    // Complexity: O((m1 + m2).(k1 + k2))
+    DFA operator&(DFA& other);
+
     // Returns a state, given its index.
     State& operator[](const Index&);
 
