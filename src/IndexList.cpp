@@ -10,6 +10,10 @@ IndexList& IndexList::remove(IndexList::Data index) {
     return *this;
 }
 
+IndexList::Data IndexList::extract() {
+    return floor(log2(list));
+}
+
 bool IndexList::isSet(IndexList::Data index) const {
     return (list & (1 << index)) != 0;
 }
@@ -17,14 +21,14 @@ bool IndexList::isSet(IndexList::Data index) const {
 IndexList::Data IndexList::count() const {
     Data result = 0;
     Data copy = list;
-    while (list > 0) {
+    while (copy > 0) {
         result++;
         copy = copy & (copy - 1);
     }
     return result;
 }
 
-IndexList::Data getList() const {
+IndexList::Data IndexList::getList() const {
     return list;
 }
 
@@ -41,6 +45,7 @@ IndexList IndexList::operator~() const {
 IndexList IndexList::operator&(const IndexList& other) const {
     IndexList newList(std::max(size, other.size));
     newList.list = list & other.list;
+    return newList;
 }
 
 IndexList IndexList::operator-(const IndexList& other) const {

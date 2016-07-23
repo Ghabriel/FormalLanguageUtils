@@ -95,10 +95,37 @@ DFA DFA::withoutUselessStates() const {
 }
 
 DFA DFA::withoutEquivalentStates() {
-	auto classes = getEquivalenceClasses();
-	// TODO
-	TRACE(classes.size());
 	DFA result;
+	std::queue<IndexList> classes = getEquivalenceClasses();
+	std::unordered_map<Index, Index> stateMapping;
+	while (!classes.empty()) {
+		IndexList& eqClass = classes.front();
+		classes.pop();
+
+		Index master = eqClass.extract();
+		eqClass.remove(master);
+
+		State& masterState = states[master];
+		result << masterState;
+		Index trueIndex = result[masterState];
+		stateMapping[master] = trueIndex;
+
+		while (eqClass.count() > 0) {
+			Index index = eqClass.extract();
+			eqClass.remove(index);
+			stateMapping[index] = trueIndex;
+			// ECHO("[REPLACE] " + states[index].getName() + " to " + masterState.getName());
+		}
+	}
+
+	for (auto& pair : states) {
+		for (auto& transition : pair.second.transitions) {
+			result.addTransition(result[stateMapping[pair.first]],
+								 result[stateMapping[transition.second]],
+								 transition.first);
+		}
+	}
+
 	return result;
 }
 
@@ -109,6 +136,10 @@ DFA DFA::minimized() const {
 
 State& DFA::operator[](const Index& index) {
 	return states[index];
+}
+
+DFA::Index& DFA::operator[](const State& state) {
+	return states[state];
 }
 
 DFA& DFA::operator<<(const State& state) {
@@ -173,21 +204,19 @@ std::queue<IndexList> DFA::getEquivalenceClasses() {
 				if (intersection != 0 && difference != 0) {
 					partitions.push(intersection);
 					partitions.push(difference);
+					if (w.count(partition) > 0) {
+						w.erase(partition);
+						w.insert(intersection);
+						w.insert(difference);
+					} else {
+						if (intersection.count() <= difference.count()) {
+							w.insert(intersection);
+						} else {
+							w.insert(difference);
+						}
+					}
 				} else {
 					helper.push(partition);
-					continue;
-				}
-
-				if (w.count(partition) > 0) {
-					w.erase(partition);
-					w.insert(intersection);
-					w.insert(difference);
-				} else {
-					if (intersection.count() <= difference.count()) {
-						w.insert(intersection);
-					} else {
-						w.insert(difference);
-					}
 				}
 			}
 			partitions.swap(helper);
@@ -200,9 +229,16 @@ void DFA::materializeErrorState() {
 	// TODO
 }
 
-IndexList DFA::stateFilter(char, const IndexList&) const {
-	// TODO
-	return IndexList(size());
+IndexList DFA::stateFilter(char input, const IndexList& list) const {
+	IndexList result(size());
+	for (auto& pair : states) {
+		for (auto& transition : pair.second.transitions) {
+			if (transition.first == input && list.isSet(transition.second)) {
+				result.remove(pair.first);
+			}
+		}
+	}
+	return ~result;
 }
 
 std::unordered_set<DFA::Index> DFA::bfs(const State& state) const {
@@ -252,7 +288,7 @@ IndexList DFA::setToList(const std::unordered_set<DFA::Index>& set) const {
 	for (auto& index : set) {
 		list.remove(index);
 	}
-	return !list;
+	return ~list;
 }
 
 IndexList DFA::setToList(const std::unordered_set<State>& set) const {
@@ -260,5 +296,5 @@ IndexList DFA::setToList(const std::unordered_set<State>& set) const {
 	for (auto& state : set) {
 		list.remove(states[state]);
 	}
-	return !list;
+	return ~list;
 }

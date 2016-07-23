@@ -2,6 +2,7 @@
 #define DFA_HPP
 
 #include <cstdlib>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -123,6 +124,9 @@ public:
     // Returns a state, given its index.
     State& operator[](const Index&);
 
+    // Returns an index, given its state.
+    Index& operator[](const State&);
+
     // Adds a state to this DFA, returning itself to allow chaining.
     DFA& operator<<(const State&);
 
@@ -146,10 +150,14 @@ private:
 
     // Returns the equivalence classes of this DFA.
     // TODO: find a way to make this const
+    // Complexity: O(an.log n), where a is the size of the alphabet
     std::queue<IndexList> getEquivalenceClasses();
 
     void materializeErrorState();
 
+    // Returns the set of states that, when reading a given input,
+    // go to a state of a given set.
+    // Complexity: O(m)
     IndexList stateFilter(char, const IndexList&) const;
 
     // Executes breadth-first search on a state, returning a set

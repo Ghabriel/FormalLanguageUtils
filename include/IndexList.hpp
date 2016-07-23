@@ -2,7 +2,8 @@
 #define INDEXLIST_HPP
 
 #include <cmath>
-#include <cstdlib>
+#include <functional>
+#include <ostream>
 
 class IndexList {
 private:
@@ -10,6 +11,7 @@ private:
 public:
     IndexList(std::size_t);
     IndexList& remove(Data);
+    Data extract();
     bool isSet(Data) const;
     Data count() const;
     Data getList() const;
@@ -34,6 +36,10 @@ namespace std {
             return std::hash<unsigned long long>()(list.getList());
         }
     };
+}
+
+inline std::ostream& operator<<(std::ostream& stream, const IndexList& list) {
+	return stream << list.getList();
 }
 
 #endif
