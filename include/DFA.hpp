@@ -140,17 +140,31 @@ public:
     // Complexity: O(m)
     bool empty() const;
 
+    // Checks if the language of this DFA contains the language
+    // of another DFA.
+    // Complexity: O((m1 + m2).(k1 + k2))
+    bool contains(DFA&);
+
+    // Adds a state to this DFA representing the error state,
+    // making this DFA complete. Note that, if this DFA is already complete,
+    // the error state is added if and only if forced is true.
+    // Complexity: O(kn + m), where k is the size of the alphabet
+    void materializeErrorState(bool forced = false);
+
     // Returns the complement of this DFA.
     // Complexity: O(kn + m), where k is the size of the alphabet
     DFA operator~() const;
 
     // Returns the intersection between this and another DFA.
     // Complexity: O((m1 + m2).(k1 + k2))
-    DFA operator&(DFA& other);
+    DFA operator&(DFA&);
 
     // Returns the union between this and another DFA.
     // Complexity: O((m1 + m2).(k1 + k2))
-    DFA operator|(DFA& other);
+    DFA operator|(DFA&);
+
+    // Checks if two DFAs are equal.
+    bool operator==(DFA&);
 
     // Returns a state, given its index.
     State& operator[](const Index&);
@@ -170,8 +184,13 @@ private:
     Index initialStateIndex;
     bool errorState = true;
     const static std::string errorStateName;
+    const static std::string materializedErrorPrefix;
 
     void accept() {}
+
+    // Returns the index of the error state, or -1 if it's not materialized.
+    // Complexity: O(n)
+    Index errorStateIndex() const;
 
     // Returns an IndexList where each bit is 1 if the state is dead,
     // 0 otherwise.
@@ -186,12 +205,6 @@ private:
     // Returns the equivalence classes of this DFA.
     // Complexity: O(kn.log n), where k is the size of the alphabet
     std::queue<IndexList> getEquivalenceClasses();
-
-    // Adds a state to this DFA representing the error state,
-    // making this DFA complete. Note that, if this DFA is already complete,
-    // no state is added.
-    // Complexity: O(kn + m), where k is the size of the alphabet
-    void materializeErrorState();
 
     // Returns the set of states that, when reading a given input,
     // go to a state of a given set.

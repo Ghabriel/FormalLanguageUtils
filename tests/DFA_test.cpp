@@ -136,6 +136,42 @@ TEST_F(TestDFA, AcceptingStates) {
     EXPECT_EQ(expected, instance.finalStates());
 }
 
+TEST_F(TestDFA, StateRemoval) {
+    instance << "q0";
+    instance << "q1";
+    instance << "q2";
+    instance << "q3";
+    instance.addTransition("q0", "q1", 'a');
+    instance.addTransition("q1", "q2", 'a');
+    instance.addTransition("q1", "q2", 'b');
+    instance.addTransition("q2", "q3", 'a');
+    instance.addTransition("q3", "q0", 'a');
+    instance.accept("q3");
+    EXPECT_EQ(4, instance.size());
+
+    instance.read("aba");
+    EXPECT_TRUE(instance.accepts());
+
+    instance.reset();
+    EXPECT_NO_THROW(instance.removeState("q99"));
+    EXPECT_EQ(4, instance.size());
+    instance.read("aba");
+    EXPECT_TRUE(instance.accepts());
+
+    instance.reset();
+    EXPECT_NO_THROW(instance.removeState("q2"));
+    EXPECT_EQ(3, instance.size());
+    instance.read("aba");
+    EXPECT_FALSE(instance.accepts());
+    EXPECT_TRUE(instance.error());
+
+    instance.reset();
+    instance.read("a");
+    EXPECT_FALSE(instance.error());
+    instance.read("a");
+    EXPECT_TRUE(instance.error());
+}
+
 TEST_F(TestDFA, DeadStateRemoval) {
     instance << "q0";
     instance << "q1";
@@ -215,7 +251,8 @@ TEST_F(TestDFA, Minimization) {
     instance.addTransition("q4", "q4", 'b');
     instance.addTransition("q5", "q2", 'a');
 
-    DFA minimized = instance.minimized();
+    DFA minimized;
+    ASSERT_NO_THROW(minimized = instance.minimized());
     EXPECT_EQ(3, minimized.size());
 }
 
@@ -231,6 +268,7 @@ TEST_F(TestDFA, Complement) {
     DFA complement;
     ASSERT_NO_THROW(complement = ~instance);
 
+    EXPECT_EQ(3, instance.size());
     EXPECT_EQ(3, complement.size());
 
     EXPECT_TRUE(instance.accepts());
@@ -269,6 +307,8 @@ TEST_F(TestDFA, Intersection) {
     second.accept("q0");
 
     DFA intersection = instance & second;
+    EXPECT_EQ(3, instance.size());
+    EXPECT_EQ(2, second.size());
     EXPECT_EQ(6, intersection.size());
     EXPECT_TRUE(intersection.accepts());
     intersection.read("a");
@@ -302,6 +342,8 @@ TEST_F(TestDFA, Union) {
     second.accept("q0");
 
     DFA unionDFA = instance | second;
+    EXPECT_EQ(3, instance.size());
+    EXPECT_EQ(2, second.size());
     EXPECT_EQ(6, unionDFA.size());
     EXPECT_TRUE(unionDFA.accepts());
     unionDFA.read("a");
@@ -326,15 +368,70 @@ TEST_F(TestDFA, Emptyness) {
     EXPECT_FALSE(instance.empty());
     instance.addTransition("q0", "q0", 'a');
     EXPECT_FALSE(instance.empty());
+    EXPECT_EQ(1, instance.size());
 }
 
-// TEST_F(TestDFA, Equivalence) {
-//     instance << "q0";
-//     instance << "q1";
-//     instance.addTransition("q0", "q1", 'a');
-//     instance.accept("q1");
-//     EXPECT_EQ(~~instance, instance);
-// }
+TEST_F(TestDFA, Containment) {
+    instance << "q0";
+    instance << "q1";
+    instance << "q2";
+    instance << "q3";
+    instance.addTransition("q0", "q1", 'a');
+    instance.addTransition("q0", "q1", 'b');
+    instance.addTransition("q1", "q2", 'a');
+    instance.addTransition("q1", "q2", 'b');
+    instance.addTransition("q2", "q3", 'a');
+    instance.addTransition("q2", "q3", 'b');
+    instance.addTransition("q3", "q0", 'a');
+    instance.addTransition("q3", "q0", 'b');
+    instance.accept("q0");
+    instance.accept("q2");
+
+    DFA second;
+    second << "q0";
+    second << "q1";
+    second.addTransition("q0", "q1", 'a');
+    second.addTransition("q1", "q0", 'a');
+    second.accept("q0");
+
+    bool r1, r2;
+    ASSERT_NO_THROW(r1 = instance.contains(second));
+    ASSERT_NO_THROW(r2 = second.contains(instance));
+
+    EXPECT_TRUE(r1);
+    EXPECT_FALSE(r2);
+
+    EXPECT_EQ(4, instance.size());
+    EXPECT_EQ(2, second.size());
+}
+
+TEST_F(TestDFA, Equivalence) {
+    instance << "q0";
+    instance << "q1";
+    instance.addTransition("q0", "q1", 'a');
+    instance.accept("q1");
+
+    DFA copy;
+    ASSERT_NO_THROW(copy = ~~instance);
+    ASSERT_EQ(instance.size(), copy.size());
+
+    DFA almostEqual;
+    almostEqual << "q0";
+    almostEqual << "q1";
+    almostEqual.addTransition("q0", "q1", 'b');
+    almostEqual.accept("q1");
+
+    bool r;
+    ASSERT_NO_THROW(r = (copy == instance));
+    EXPECT_TRUE(r);
+    EXPECT_EQ(2, instance.size());
+    EXPECT_EQ(2, copy.size());
+
+    ASSERT_NO_THROW(r = (almostEqual == instance));
+    EXPECT_FALSE(r);
+    EXPECT_EQ(2, instance.size());
+    EXPECT_EQ(2, almostEqual.size());
+}
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
