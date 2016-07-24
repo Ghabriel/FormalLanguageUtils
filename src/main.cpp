@@ -12,7 +12,7 @@ int main(int, char**) {
         return std::to_string(i);
     };
 
-    unsigned limit = 43;
+    unsigned limit = 63;
     instance.reserve(limit);
     for (unsigned i = 0; i < limit; i++) {
         instance << ("q" + fn(i));
@@ -30,7 +30,10 @@ int main(int, char**) {
         instance.addTransition("q" + fn(next), "q" + fn((i + 3) % limit), 'b');
     }
 
-    instance.debug();
-    ECHO("------------------------");
+    // instance.debug();
+    // ECHO("------------------------");
+    // TRACE((~instance).size());
     (~instance).debug();
+    // DFA other = instance.withoutEquivalentStates();
+    // other.debug();
 }
