@@ -126,7 +126,7 @@ DFA DFA::withoutEquivalentStates() {
     std::queue<IndexList> classes = getEquivalenceClasses();
     std::unordered_map<Index, Index> stateMapping;
     while (!classes.empty()) {
-        IndexList& eqClass = classes.front();
+        IndexList eqClass = classes.front();
         classes.pop();
 
         Index master = eqClass.extract();
@@ -333,7 +333,9 @@ std::queue<IndexList> DFA::getEquivalenceClasses() {
                 partitions.pop();
                 IndexList intersection = partition & predecessors;
                 IndexList difference = partition - predecessors;
-                if (intersection != 0 && difference != 0) {
+                auto intCount = intersection.count();
+                auto difCount = difference.count();
+                if (intCount != 0 && difCount != 0) {
                     partitions.push(intersection);
                     partitions.push(difference);
                     if (w.count(partition) > 0) {
@@ -341,7 +343,7 @@ std::queue<IndexList> DFA::getEquivalenceClasses() {
                         w.insert(intersection);
                         w.insert(difference);
                     } else {
-                        if (intersection.count() <= difference.count()) {
+                        if (intCount <= difCount) {
                             w.insert(intersection);
                         } else {
                             w.insert(difference);

@@ -3,11 +3,15 @@
 #include "IndexList.hpp"
 
 IndexList::IndexList(ull size) : size(size) {
-    ull numLists = ((size - 1) >> 6) + 1;
-    for (ull i = 0; i < numLists - 1; i++) {
-        lists.push_back(stream(limit));
+    if (size > 0) {
+        ull numLists = ((size - 1) >> 6) + 1;
+        for (ull i = 0; i < numLists - 1; i++) {
+            lists.push_back(stream(limit));
+            // lists[i] = stream(limit);
+        }
+        lists.push_back(stream(1 + ((size - 1) % limit)));
+        // lists[numLists - 1] = stream(1 + ((size - 1) % limit));
     }
-    lists.push_back(stream(1 + ((size - 1) % limit)));
 }
 
 IndexList& IndexList::remove(IndexList::ull index) {
@@ -56,10 +60,9 @@ IndexList IndexList::operator~() const {
 }
 
 IndexList IndexList::operator&(const IndexList& other) const {
-    ull newSize = std::max(size, other.size);
-    IndexList newList(newSize);
-    for (ull i = 0; i < newSize; i++) {
-        if (i >= size || i >= other.size) {
+    IndexList newList(std::max(size, other.size));
+    for (ull i = 0; i < newList.lists.size(); i++) {
+        if (i >= lists.size() || i >= other.lists.size()) {
             newList.lists[i] = 0;
         } else {
             newList.lists[i] = lists[i] & other.lists[i];
@@ -74,7 +77,7 @@ IndexList IndexList::operator-(const IndexList& other) const {
 
 bool IndexList::operator==(const IndexList& other) const {
     if (size != other.size) return false;
-    for (ull i = 0; i < size; i++) {
+    for (ull i = 0; i < lists.size(); i++) {
         if (lists[i] != other.lists[i]) return false;
     }
     return true;
@@ -100,11 +103,21 @@ IndexList::ull IndexList::stream(ull size) const {
 
 const IndexList::ull& IndexList::find(ull index) const {
     assert(index < size);
+    // ECHO("----- " + std::to_string(size));
+    // ECHO("----- " + std::to_string(index));
+    // ECHO("----- " + std::to_string(lists.size()));
+    // ECHO("----- " + std::to_string(index >> 6));
+    // ECHO("#####");
     return lists.at(index >> 6);
 }
 
 IndexList::ull& IndexList::find(ull index) {
     assert(index < size);
+    // ECHO("----- " + std::to_string(size));
+    // ECHO("----- " + std::to_string(index));
+    // ECHO("----- " + std::to_string(lists.size()));
+    // ECHO("----- " + std::to_string(index >> 6));
+    // ECHO("#####");
     return lists.at(index >> 6);
 }
 

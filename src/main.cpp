@@ -8,32 +8,26 @@ std::ostream& operator<<(std::ostream& stream, const State& state) {
 
 int main(int, char**) {
     DFA instance;
-    auto fn = [](unsigned i) -> std::string {
-        return std::to_string(i);
-    };
-
-    unsigned limit = 63;
-    instance.reserve(limit);
-    for (unsigned i = 0; i < limit; i++) {
-        instance << ("q" + fn(i));
-    }
-
-    instance.accept("q" + fn(limit - 2));
-    instance.accept("q" + fn(limit - 1));
+    instance << "q0";
+    instance << "q1";
+    instance << "q2";
+    instance << "q3";
+    instance << "q4";
+    instance << "q5";
+    instance.accept("q3");
     instance.addTransition("q0", "q1", 'a');
     instance.addTransition("q0", "q2", 'b');
-    for (unsigned i = 1; i < limit - 2; i += 2) {
-        unsigned next = (i + 1) % limit;
-        instance.addTransition("q" + fn(i), "q" + fn(next), 'a');
-        instance.addTransition("q" + fn(next), "q" + fn(i), 'a');
-        instance.addTransition("q" + fn(i), "q" + fn((i + 2) % limit), 'b');
-        instance.addTransition("q" + fn(next), "q" + fn((i + 3) % limit), 'b');
-    }
+    instance.addTransition("q1", "q2", 'b');
+    instance.addTransition("q2", "q1", 'b');
+    instance.addTransition("q1", "q3", 'c');
+    instance.addTransition("q2", "q3", 'c');
+    instance.addTransition("q3", "q4", 'a');
+    instance.addTransition("q4", "q4", 'b');
+    instance.addTransition("q5", "q2", 'a');
 
-    // instance.debug();
-    // ECHO("------------------------");
-    // TRACE((~instance).size());
-    (~instance).debug();
-    // DFA other = instance.withoutEquivalentStates();
-    // other.debug();
+    DFA minimized;
+    ECHO("BEGIN");
+    minimized = instance.minimized();
+    ECHO("END");
+
 }

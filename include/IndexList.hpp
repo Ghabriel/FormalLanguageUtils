@@ -5,6 +5,7 @@
 #include <functional>
 #include <ostream>
 #include <vector>
+#include "utils.hpp"
 
 /*
  * A data structure focused on storing sequential values in the range [0, size)
@@ -54,7 +55,7 @@ namespace std {
 }
 
 // inline std::ostream& operator<<(std::ostream& stream, const IndexList& list) {
-// 	return stream << list.getList();
+//  return stream << list.getList();
 // }
 
 #endif
