@@ -27,6 +27,7 @@ public:
 private:
     Data list;
     std::size_t size;
+    const static Data one = 1;
 };
 
 namespace std {

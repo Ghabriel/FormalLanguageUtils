@@ -53,6 +53,16 @@ TEST_F(TestDFA, Acceptance) {
     instance.reset();
     instance.read("abb");
     EXPECT_FALSE(instance.accepts());
+
+    DFA other;
+    other << "q0";
+    other.accept("q0");
+
+    EXPECT_TRUE(other.accepts());
+    other.read("a");
+    EXPECT_FALSE(other.accepts());
+    other.reset();
+    EXPECT_TRUE(other.accepts());
 }
 
 TEST_F(TestDFA, ErrorState) {
@@ -188,10 +198,12 @@ TEST_F(TestDFA, DeadStateRemoval) {
     instance.accept("q1");
     other = instance.withoutDeadStates();
     EXPECT_EQ(2, other.size());
+    EXPECT_EQ(other.initialState(), instance.initialState());
 
     instance.accept("q3");
     other = instance.withoutDeadStates();
     EXPECT_EQ(3, other.size());
+    EXPECT_EQ(other.initialState(), instance.initialState());
 
     DFA empty;
     ASSERT_NO_THROW(empty.withoutDeadStates());
@@ -211,6 +223,7 @@ TEST_F(TestDFA, UnreachableStateRemoval) {
 
     DFA other = instance.withoutUnreachableStates();
     EXPECT_EQ(3, other.size());
+    EXPECT_EQ(other.initialState(), instance.initialState());
 
     DFA empty;
     ASSERT_NO_THROW(empty.withoutUnreachableStates());
@@ -231,6 +244,38 @@ TEST_F(TestDFA, UselessStateRemoval) {
     
     DFA other = instance.withoutUselessStates();
     EXPECT_EQ(2, other.size());
+    EXPECT_EQ(other.initialState(), instance.initialState());
+}
+
+TEST_F(TestDFA, EquivalentStateRemoval) {
+    instance << "q0";
+    instance << "q1";
+    instance << "q2";
+    instance << "q3";
+    instance << "q4";
+    instance << "q5";
+    instance.addTransition("q0", "q1", 'a');
+    instance.addTransition("q1", "q2", 'b');
+    instance.addTransition("q2", "q2", 'c');
+    instance.addTransition("q3", "q3", 'd');
+    instance.addTransition("q3", "q4", 'a');
+    instance.addTransition("q4", "q5", 'a');
+    instance.addTransition("q5", "q3", 'a');
+    instance.accept("q2");
+    EXPECT_EQ(6, instance.size());
+    instance.read("abc");
+    EXPECT_TRUE(instance.accepts());
+    instance.read("d");
+    EXPECT_FALSE(instance.accepts());
+
+    DFA other = instance.withoutDeadStates();
+    EXPECT_EQ(3, other.size());
+    EXPECT_EQ(other.initialState(), instance.initialState());
+
+    other.read("abc");
+    EXPECT_TRUE(other.accepts());
+    other.read("d");
+    EXPECT_FALSE(other.accepts());
 }
 
 TEST_F(TestDFA, Minimization) {
@@ -254,6 +299,33 @@ TEST_F(TestDFA, Minimization) {
     DFA minimized;
     ASSERT_NO_THROW(minimized = instance.minimized());
     EXPECT_EQ(3, minimized.size());
+    EXPECT_EQ(minimized.initialState().getName(), instance.initialState().getName());
+}
+
+TEST_F(TestDFA, MinimizationStress) {
+    auto fn = [](unsigned i) -> std::string {
+        return std::to_string(i);
+    };
+
+    unsigned limit = 1e3 - 1;
+    instance.reserve(limit);
+    for (unsigned i = 0; i < limit; i++) {
+        instance << ("q" + fn(i));
+    }
+
+    instance.accept("q" + fn(limit - 2));
+    instance.accept("q" + fn(limit - 1));
+    instance.addTransition("q0", "q1", 'a');
+    instance.addTransition("q0", "q2", 'b');
+    for (unsigned i = 1; i < limit - 2; i += 2) {
+        unsigned next = (i + 1) % limit;
+        instance.addTransition("q" + fn(i), "q" + fn(next), 'a');
+        instance.addTransition("q" + fn(next), "q" + fn(i), 'a');
+        instance.addTransition("q" + fn(i), "q" + fn((i + 2) % limit), 'b');
+        instance.addTransition("q" + fn(next), "q" + fn((i + 3) % limit), 'b');
+    }
+
+    // EXPECT_EQ("q0", instance.state().getName());
 }
 
 TEST_F(TestDFA, Complement) {

@@ -1,12 +1,13 @@
 #include <cmath>
 #include "IndexList.hpp"
+#include "utils.hpp"
 
 IndexList::IndexList(std::size_t size) : size(size) {
     list = std::pow(2, size) - 1;
 }
 
 IndexList& IndexList::remove(IndexList::Data index) {
-    list ^= (1 << index);
+    list ^= (one << index);
     return *this;
 }
 
@@ -15,7 +16,7 @@ IndexList::Data IndexList::extract() {
 }
 
 bool IndexList::isSet(IndexList::Data index) const {
-    return (list & (1 << index)) != 0;
+    return (list & (one << index)) != 0;
 }
 
 IndexList::Data IndexList::count() const {

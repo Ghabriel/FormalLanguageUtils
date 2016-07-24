@@ -78,7 +78,7 @@ void DFA::read(char input) {
 }
 
 bool DFA::accepts() const {
-    return states[currentState].accepts;
+    return !errorState && states[currentState].accepts;
 }
 
 DFA& DFA::addTransition(const State& from, const State& to, char input) {
@@ -130,12 +130,15 @@ DFA DFA::withoutEquivalentStates() {
         classes.pop();
 
         Index master = eqClass.extract();
-        eqClass.remove(master);
-
         State& masterState = states[master];
         result << masterState;
         Index trueIndex = result[masterState];
         stateMapping[master] = trueIndex;
+
+        if (eqClass.isSet(initialStateIndex)) {
+            result.initialState(masterState);
+        }
+        eqClass.remove(master);
 
         while (eqClass.count() > 0) {
             Index index = eqClass.extract();
@@ -146,10 +149,13 @@ DFA DFA::withoutEquivalentStates() {
     }
 
     transitionTraversal([&](const Index& from, const Index& to, char c) {
-        result.addTransition(result[stateMapping[from]],
-                             result[stateMapping[to]],
-                             c);
+        if (stateMapping.count(from) > 0 && stateMapping.count(to) > 0) {
+            result.addTransition(result[stateMapping[from]],
+                                 result[stateMapping[to]],
+                                 c);
+        }
     });
+    result.reset();
     return result;
 }
 
@@ -304,7 +310,7 @@ IndexList DFA::getReachableStates() const {
 }
 
 std::queue<IndexList> DFA::getEquivalenceClasses() {
-    materializeErrorState();
+    materializeErrorState(true);
     auto sigma = alphabet();
     auto finalSet = setToList(finalStates());
 

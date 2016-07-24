@@ -142,7 +142,7 @@ public:
 
     // Checks if the language of this DFA contains the language
     // of another DFA.
-    // Complexity: O((m1 + m2).(k1 + k2))
+    // Complexity: O(k1.n1 + k2.n2 + (m1 + m2).(k1 + k2))
     bool contains(DFA&);
 
     // Adds a state to this DFA representing the error state,
@@ -164,6 +164,7 @@ public:
     DFA operator|(DFA&);
 
     // Checks if two DFAs are equal.
+    // Complexity: O(k1.n1 + k2.n2 + (m1 + m2).(k1 + k2))
     bool operator==(DFA&);
 
     // Returns a state, given its index.
@@ -177,6 +178,7 @@ public:
 
     // Prints all relevant information about this DFA.
     void debug() const;
+    IndexList getReachableStates() const;
 
 private:
     utils::bimap<Index, State> states;
@@ -200,7 +202,6 @@ private:
     // Returns an IndexList where each bit is 1 if the state is reachable,
     // 0 otherwise.
     // Complexity: O(n + m)
-    IndexList getReachableStates() const;
 
     // Returns the equivalence classes of this DFA.
     // Complexity: O(kn.log n), where k is the size of the alphabet
