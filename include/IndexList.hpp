@@ -21,16 +21,14 @@ public:
     ull extract();
     bool isSet(ull) const;
     ull count() const;
-    // ull getList() const;
     std::size_t hash() const;
+    std::string debug() const;
     IndexList operator!() const;
     IndexList operator~() const;
     IndexList operator&(const IndexList&) const;
     IndexList operator-(const IndexList&) const;
     bool operator==(const IndexList&) const;
     bool operator!=(const IndexList&) const;
-    bool operator==(const ull&) const;
-    bool operator!=(const ull&) const;
 
 private:
     std::vector<ull> lists;
@@ -48,14 +46,13 @@ namespace std {
     template<>
     struct hash<IndexList> {
         std::size_t operator()(const IndexList& list) const {
-            // return std::hash<unsigned long long>()(list.getList());
             return list.hash();
         }
     };
 }
 
-// inline std::ostream& operator<<(std::ostream& stream, const IndexList& list) {
-//  return stream << list.getList();
-// }
+inline std::ostream& operator<<(std::ostream& stream, const IndexList& list) {
+    return stream << list.debug();
+}
 
 #endif

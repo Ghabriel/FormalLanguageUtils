@@ -144,7 +144,6 @@ DFA DFA::withoutEquivalentStates() {
             Index index = eqClass.extract();
             eqClass.remove(index);
             stateMapping[index] = trueIndex;
-            // ECHO("[REPLACE] " + states[index].getName() + " to " + masterState.getName());
         }
     }
 
@@ -160,7 +159,7 @@ DFA DFA::withoutEquivalentStates() {
 }
 
 DFA DFA::minimized() const {
-    DFA clean = withoutUselessStates();
+    DFA clean = withoutUnreachableStates();
     return clean.withoutEquivalentStates();
 }
 

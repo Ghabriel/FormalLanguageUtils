@@ -80,7 +80,7 @@ TEST_F(TestDFA, ErrorState) {
     EXPECT_FALSE(instance.error());
 }
 
-TEST_F(TestDFA, Stress) {
+TEST_F(TestDFA, ReadStress) {
     auto fn = [](unsigned i) -> std::string {
         return std::to_string(i);
     };
@@ -307,7 +307,7 @@ TEST_F(TestDFA, MinimizationStress) {
         return std::to_string(i);
     };
 
-    unsigned limit = 1e3 - 1;
+    unsigned limit = 999;
     instance.reserve(limit);
     for (unsigned i = 0; i < limit; i++) {
         instance << ("q" + fn(i));
@@ -325,7 +325,9 @@ TEST_F(TestDFA, MinimizationStress) {
         instance.addTransition("q" + fn(next), "q" + fn((i + 3) % limit), 'b');
     }
 
-    // EXPECT_EQ("q0", instance.state().getName());
+    DFA other;
+    ASSERT_NO_THROW(other = instance.minimized());
+    EXPECT_EQ((limit + 1)/2, other.size());
 }
 
 TEST_F(TestDFA, Complement) {

@@ -7,15 +7,13 @@ IndexList::IndexList(ull size) : size(size) {
         ull numLists = ((size - 1) >> 6) + 1;
         for (ull i = 0; i < numLists - 1; i++) {
             lists.push_back(stream(limit));
-            // lists[i] = stream(limit);
         }
         lists.push_back(stream(1 + ((size - 1) % limit)));
-        // lists[numLists - 1] = stream(1 + ((size - 1) % limit));
     }
 }
 
 IndexList& IndexList::remove(IndexList::ull index) {
-    find(index) ^= offset(index);
+    find(index) &= ~offset(index);
     return *this;
 }
 
@@ -45,6 +43,14 @@ IndexList::ull IndexList::count() const {
 
 std::size_t IndexList::hash() const {
     return std::hash<ull>()(lists.back());
+}
+
+std::string IndexList::debug() const {
+    std::string result;
+    for (ull i = 0; i < lists.size(); i++) {
+        result += lists[i] + '\n';
+    }
+    return result;
 }
 
 IndexList IndexList::operator!() const {
@@ -87,37 +93,17 @@ bool IndexList::operator!=(const IndexList& other) const {
     return !(*this == other);
 }
 
-bool IndexList::operator==(const ull& data) const {
-    assert(false);
-    // return list == data;
-}
-
-bool IndexList::operator!=(const ull& data) const {
-    assert(false);
-    // return list != data;
-}
-
 IndexList::ull IndexList::stream(ull size) const {
     return (one << size) - 1;
 }
 
 const IndexList::ull& IndexList::find(ull index) const {
     assert(index < size);
-    // ECHO("----- " + std::to_string(size));
-    // ECHO("----- " + std::to_string(index));
-    // ECHO("----- " + std::to_string(lists.size()));
-    // ECHO("----- " + std::to_string(index >> 6));
-    // ECHO("#####");
     return lists.at(index >> 6);
 }
 
 IndexList::ull& IndexList::find(ull index) {
     assert(index < size);
-    // ECHO("----- " + std::to_string(size));
-    // ECHO("----- " + std::to_string(index));
-    // ECHO("----- " + std::to_string(lists.size()));
-    // ECHO("----- " + std::to_string(index >> 6));
-    // ECHO("#####");
     return lists.at(index >> 6);
 }
 

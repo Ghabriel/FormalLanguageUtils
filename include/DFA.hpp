@@ -133,7 +133,7 @@ public:
     DFA withoutEquivalentStates();
 
     // Returns the minimized form of this DFA.
-    // Complexity: O(n(n + m + k.log n)), where k is the size of the alphabet
+    // Complexity: O(kn.log n + m), where k is the size of the alphabet
     DFA minimized() const;
 
     // Checks if this DFA is empty, i.e, doesn't accept anything.
@@ -178,7 +178,6 @@ public:
 
     // Prints all relevant information about this DFA.
     void debug() const;
-    IndexList getReachableStates() const;
 
 private:
     utils::bimap<Index, State> states;
@@ -202,6 +201,7 @@ private:
     // Returns an IndexList where each bit is 1 if the state is reachable,
     // 0 otherwise.
     // Complexity: O(n + m)
+    IndexList getReachableStates() const;
 
     // Returns the equivalence classes of this DFA.
     // Complexity: O(kn.log n), where k is the size of the alphabet
