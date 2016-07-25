@@ -164,7 +164,7 @@ public:
     DFA operator|(DFA&);
 
     // Checks if two DFAs are equal.
-    // Complexity: O(k1.n1 + k2.n2 + (m1 + m2).(k1 + k2))
+    // Complexity: O((m1 + m2).(k1 + k2))
     bool operator==(DFA&);
 
     // Returns a state, given its index.

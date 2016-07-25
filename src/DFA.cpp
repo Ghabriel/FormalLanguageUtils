@@ -324,7 +324,9 @@ std::queue<IndexList> DFA::getEquivalenceClasses() {
     std::queue<IndexList> helper;
     std::unordered_set<IndexList> w;
 
-    partitions.push(finalSet);
+    if (finalSet.count() > 0) {
+        partitions.push(finalSet);
+    }
     partitions.push(IndexList(size()) - finalSet);
     w.reserve(size());
     w.insert(finalSet);
