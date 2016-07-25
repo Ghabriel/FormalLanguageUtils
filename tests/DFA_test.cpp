@@ -507,6 +507,33 @@ TEST_F(TestDFA, Equivalence) {
     EXPECT_EQ(2, almostEqual.size());
 }
 
+TEST_F(TestDFA, EquivalenceStress) {
+    auto fn = [](unsigned i) -> std::string {
+        return std::to_string(i);
+    };
+
+    unsigned limit = 1e4;
+    instance.reserve(limit);
+    for (unsigned i = 0; i < limit; i++) {
+        instance << ("q" + fn(i));
+    }
+
+    instance.accept("q" + fn(limit - 2));
+    instance.accept("q" + fn(limit - 1));
+    instance.addTransition("q0", "q1", 'a');
+    instance.addTransition("q0", "q2", 'b');
+    for (unsigned i = 1; i < limit - 2; i += 2) {
+        unsigned next = (i + 1) % limit;
+        instance.addTransition("q" + fn(i), "q" + fn(next), 'a');
+        instance.addTransition("q" + fn(next), "q" + fn(i), 'a');
+        instance.addTransition("q" + fn(i), "q" + fn((i + 2) % limit), 'b');
+        instance.addTransition("q" + fn(next), "q" + fn((i + 3) % limit), 'b');
+    }
+
+    EXPECT_FALSE(~instance == instance);
+    EXPECT_TRUE(~~instance == instance);
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

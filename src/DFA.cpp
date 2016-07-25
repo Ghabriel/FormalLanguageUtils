@@ -239,7 +239,14 @@ DFA& DFA::operator<<(const State& state) {
 }
 
 bool DFA::operator==(DFA& other) {
-    return contains(other) && other.contains(*this);
+    bool equal = true;
+    productConstruction(other, [&](const std::pair<Index, Index>& pair) {
+        if (states[pair.first].accepts != other.states[pair.second].accepts) {
+            equal = false;
+        }
+        return false;
+    });
+    return equal;
 }
 
 void DFA::debug() const {
@@ -487,6 +494,13 @@ DFA DFA::productConstruction(DFA& other,
     other.materializeErrorState(true);
     auto sigma1 = alphabet();
     auto sigma2 = other.alphabet();
+    std::unordered_set<char> sigma;
+    for (char c : sigma1) {
+        sigma.insert(c);
+    }
+    for (char c : sigma2) {
+        sigma.insert(c);
+    }
     std::unordered_set<State> addedStates;
     std::vector<std::pair<Index, Index>> addedPairs;
     std::queue<std::pair<Index, Index>> stateList;
@@ -515,18 +529,12 @@ DFA DFA::productConstruction(DFA& other,
     while (!stateList.empty()) {
         auto& pair = stateList.front();
         stateList.pop();
-
         auto before = addedStates.size();
         auto state = format(pair);
         addedStates.insert(state);
         if (addedStates.size() != before) {
             result << state;
-            for (char c : sigma1) {
-                auto newPair = apply(pair, c);
-                addedPairs.push_back(newPair);
-                stateList.push(newPair);
-            }
-            for (char c : sigma2) {
+            for (char c : sigma) {
                 auto newPair = apply(pair, c);
                 addedPairs.push_back(newPair);
                 stateList.push(newPair);
@@ -536,10 +544,7 @@ DFA DFA::productConstruction(DFA& other,
 
     for (auto& pair : addedPairs) {
         std::string state = format(pair);
-        for (char c : sigma1) {
-            result.addTransition(state, format(apply(pair, c)), c);
-        }
-        for (char c : sigma2) {
+        for (char c : sigma) {
             result.addTransition(state, format(apply(pair, c)), c);
         }
         if (heuristic(pair)) {
