@@ -1,10 +1,10 @@
+/* created by Ghabriel Nunes <ghabriel.nunes@gmail.com> [2016] */
+
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
-#include <cstdlib>
 #include <functional>
 #include <iostream>
-#include <type_traits>
 #include <unordered_map>
 
 #define TRACE(x) std::cout << (#x) << " = " << (x) << std::endl

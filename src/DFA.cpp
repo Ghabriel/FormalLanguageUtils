@@ -1,4 +1,5 @@
-#include <queue>
+/* created by Ghabriel Nunes <ghabriel.nunes@gmail.com> [2016] */
+
 #include "DFA.hpp"
 #include "IndexList.hpp"
 

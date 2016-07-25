@@ -1,10 +1,9 @@
+/* created by Ghabriel Nunes <ghabriel.nunes@gmail.com> [2016] */
+
 #ifndef DFA_HPP
 #define DFA_HPP
 
-#include <cstdlib>
-#include <functional>
 #include <queue>
-#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include "utils.hpp"
