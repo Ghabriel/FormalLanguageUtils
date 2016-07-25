@@ -144,6 +144,7 @@ public:
     // of another DFA.
     // Complexity: O(k1.n1 + k2.n2 + (m1 + m2).(k1 + k2))
     bool contains(DFA&);
+    bool contains(DFA&&);
 
     // Adds a state to this DFA representing the error state,
     // making this DFA complete. Note that, if this DFA is already complete,
@@ -158,14 +159,17 @@ public:
     // Returns the intersection between this and another DFA.
     // Complexity: O((m1 + m2).(k1 + k2))
     DFA operator&(DFA&);
+    DFA operator&(DFA&&);
 
     // Returns the union between this and another DFA.
     // Complexity: O((m1 + m2).(k1 + k2))
     DFA operator|(DFA&);
+    DFA operator|(DFA&&);
 
     // Checks if two DFAs are equal.
     // Complexity: O((m1 + m2).(k1 + k2))
     bool operator==(DFA&);
+    bool operator==(DFA&&);
 
     // Returns a state, given its index.
     State& operator[](const Index&);

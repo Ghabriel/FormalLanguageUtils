@@ -178,6 +178,10 @@ bool DFA::empty() const {
 }
 
 bool DFA::contains(DFA& other) {
+    return contains(std::move(other));
+}
+
+bool DFA::contains(DFA&& other) {
     if (alphabet() != other.alphabet()) {
         materializeErrorState(true);
     }
@@ -210,12 +214,20 @@ DFA DFA::operator~() const {
 }
 
 DFA DFA::operator&(DFA& other) {
+    return *this & std::move(other);
+}
+
+DFA DFA::operator&(DFA&& other) {
     return productConstruction(other, [&](const std::pair<Index, Index>& pair) {
         return (states[pair.first].accepts && other.states[pair.second].accepts);
     });
 }
 
 DFA DFA::operator|(DFA& other) {
+    return *this | std::move(other);
+}
+
+DFA DFA::operator|(DFA&& other) {
     return productConstruction(other, [&](const std::pair<Index, Index>& pair) {
         return (states[pair.first].accepts || other.states[pair.second].accepts);
     });
@@ -239,6 +251,10 @@ DFA& DFA::operator<<(const State& state) {
 }
 
 bool DFA::operator==(DFA& other) {
+    return *this == std::move(other);
+}
+
+bool DFA::operator==(DFA&& other) {
     bool equal = true;
     productConstruction(other, [&](const std::pair<Index, Index>& pair) {
         if (states[pair.first].accepts != other.states[pair.second].accepts) {
