@@ -40,20 +40,20 @@ TEST_F(TestCFG, First) {
     ASSERT_NO_THROW(cfg << "<E1> ::= +<T><E1>|");
     ASSERT_NO_THROW(cfg << "<T> ::= <F><T1>");
     ASSERT_NO_THROW(cfg << "<T1> ::= *<F><T1>|");
-    ASSERT_NO_THROW(cfg << "<F> ::= (<E>)|id");
+    ASSERT_NO_THROW(cfg << "<F> ::= (<E>)|i");
 
-    ASSERT_EQ(set({"(", "id"}), cfg.first("<E>"));
+    ASSERT_EQ(set({"(", "i"}), cfg.first("<E>"));
     EXPECT_EQ(set({"+"}), cfg.first("<E1>"));
-    EXPECT_EQ(set({"(", "id"}), cfg.first("<T>"));
+    EXPECT_EQ(set({"(", "i"}), cfg.first("<T>"));
     EXPECT_EQ(set({"*"}), cfg.first("<T1>"));
-    EXPECT_EQ(set({"(", "id"}), cfg.first("<F>"));
+    EXPECT_EQ(set({"(", "i"}), cfg.first("<F>"));
 
     EXPECT_FALSE(cfg.nullable("<E>"));
     EXPECT_TRUE(cfg.nullable("<E1>"));
     EXPECT_FALSE(cfg.nullable("<T>"));
     EXPECT_TRUE(cfg.nullable("<T1>"));
     EXPECT_FALSE(cfg.nullable("<F>"));
-    EXPECT_EQ(set({"+", "(", "id"}), cfg.first("<E1><E>"));
+    EXPECT_EQ(set({"+", "(", "i"}), cfg.first("<E1><E>"));
 
     cfg.clear();
     cfg.add("<S> ::= <S>a|");
@@ -93,7 +93,7 @@ TEST_F(TestCFG, First) {
 //     cfg << "<E1> ::= +<T><E1>|";
 //     cfg << "<T> ::= <F><T1>";
 //     cfg << "<T1> ::= *<F><T1>|";
-//     cfg << "<F> ::= (<E>)|id";
+//     cfg << "<F> ::= (<E>)|i";
 //     EXPECT_EQ(set({")"}), cfg.follow("<E>"));
 //     EXPECT_EQ(set({")"}), cfg.follow("<E1>"));
 //     EXPECT_EQ(set({")", "+"}), cfg.follow("<T>"));

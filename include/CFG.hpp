@@ -72,6 +72,7 @@ private:
         mutable bool nullable;
     };
     std::vector<Production> productions;
+    std::unordered_map<Symbol, std::vector<std::size_t>> productionsBySymbol;
     std::unordered_set<Symbol> nonTerminals;
     std::unordered_set<Symbol> terminals;
     mutable bool isFirstValid = false;
@@ -85,7 +86,7 @@ private:
     bool isTerminal(const Symbol&) const;
 
     // Executes a callback for all productions of a given symbol.
-    // Complexity: O(nf), where f is the complexity of the callback.
+    // Complexity: O(f), where f is the complexity of the callback.
     void select(const Symbol&, const std::function<void(const Production&)>&) const;
 
     void updateFirst() const;

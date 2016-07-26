@@ -1,4 +1,5 @@
 #include <cassert>
+#include <queue>
 #include <regex>
 #include "CFG.hpp"
 
@@ -141,30 +142,56 @@ bool CFG::isTerminal(const CFG::Symbol& symbol) const {
 void CFG::select(const CFG::Symbol& symbol,
     const std::function<void(const CFG::Production&)>& callback) const {
     if (!isTerminal(symbol)) {
-        for (auto& prod : productions) {
-            if ('<' + prod.name + '>' == symbol) {
-                callback(prod);
-            }
+        for (auto index : productionsBySymbol.at(symbol)) {
+            callback(productions[index]);
         }
     }
 }
 
 void CFG::updateFirst() const {
-    ECHO("NOT YET IMPLEMENTED");
-    assert(false);
     if (isFirstValid) {
         return;
     }
-    for (auto& prod : productions) {
-        prod.firstSet.clear();
-        for (auto& symbol : prod.products) {
-            if (isTerminal(symbol)) {
-                prod.firstSet.insert(symbol);
-                break;
+    std::vector<std::unordered_set<Symbol>> registry;
+    std::unordered_map<Symbol, bool> nullability;
+    std::unordered_set<std::size_t> finishedNonTerminals;
+    std::queue<std::size_t> uncertain;
+    nullability.reserve(size());
+    registry.resize(size());
+    for (std::size_t i = 0; i < size(); i++) {
+        const Production& prod = productions[i];
+        if (nullability.count(prod.name) == 0) {
+            nullability[prod.name] = false;
+        }
+        if (prod.products.size() == 0) {
+            nullability[prod.name] = true;
+        } else {
+            const Symbol& startingSymbol = prod.products[0];
+            if (isTerminal(startingSymbol)) {
+                registry[i].insert(startingSymbol);
+            } else {
+                uncertain.push(i);
             }
-            // TODO
         }
     }
+
+    while (!uncertain.empty()) {
+        std::size_t index = uncertain.front();
+        uncertain.pop();
+        const Production& prod = productions[index];
+        for (auto& symbol : prod.products) {
+
+        }
+    }
+
+    // for (unsigned i = 0; i < size(); i++) {
+    //     TRACE(i);
+    //     TRACE(productions[i].name);
+    //     TRACE(nullability[productions[i].name]);
+    //     TRACE_IT(registry[i]);
+    //     ECHO("-----");
+    // }
+    assert(false);
 }
 
 void CFG::invalidate() {
