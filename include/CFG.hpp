@@ -64,6 +64,15 @@ private:
         friend class CFG;
     public:
         explicit Production(const std::string& name) : name(name) {}
+        std::size_t size() const {
+            return products.size();
+        }
+        const Symbol& operator[](std::size_t index) const {
+            return products[index];
+        }
+        Symbol& operator[](std::size_t index) {
+            return products[index];
+        }
     private:
         std::string name;
         std::vector<Symbol> products;
@@ -92,6 +101,8 @@ private:
     void updateFirst() const;
 
     void invalidate();
+
+    std::string toBNF(const Production&) const;
 };
 
 template<typename... Args>

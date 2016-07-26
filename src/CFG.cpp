@@ -15,6 +15,7 @@ CFG& CFG::add(const Symbol& name, const BNF& production) {
         }
     }
     nonTerminals.insert(name);
+    productionsBySymbol[name].push_back(size());
     productions.push_back(std::move(prod));
     invalidate();
     return *this;
@@ -103,13 +104,13 @@ bool CFG::nullable(const CFG::BNF& symbolSequence) const {
     std::vector<Symbol> symbols = toSymbolSequence(symbolSequence);
     updateFirst();
     for (Symbol& symbol : symbols) {
-        bool quit = true;
+        bool found = false;
         select(symbol, [&](const Production& prod) {
-            if (!prod.nullable) {
-                quit = false;
+            if (prod.nullable) {
+                found = true;
             }
         });
-        if (quit) {
+        if (!found) {
             return false;
         }
     }
@@ -152,107 +153,148 @@ void CFG::updateFirst() const {
     if (isFirstValid) {
         return;
     }
-    std::unordered_map<Symbol, std::unordered_set<Symbol>> registryByNonTerminal;
-    std::vector<std::unordered_set<Symbol>> registry;
-    std::unordered_map<Symbol, bool> nullability;
-    std::unordered_map<Symbol, int> uncertainNonTerminals;
-    std::queue<std::size_t> uncertain;
-    registryByNonTerminal.reserve(size());
-    registry.resize(size());
-    nullability.reserve(size());
-    uncertainNonTerminals.reserve(size());
+    using Index = std::size_t;
+    using ProductionPointer = Index;
+    using SymbolPointer = Index;
+    std::unordered_map<ProductionPointer, std::pair<bool, SymbolPointer>> progress;
+    std::unordered_map<Symbol, std::size_t> nonTerminalProgress;
+    std::queue<ProductionPointer> remaining;
 
-    // Preliminary first check, filtering out all trivial firsts
-    for (std::size_t i = 0; i < size(); i++) {
-        const Production& prod = productions[i];
-        if (nullability.count(prod.name) == 0) {
-            nullability[prod.name] = false;
-        }
-        if (uncertainNonTerminals.count(prod.name) == 0) {
-            uncertainNonTerminals[prod.name] = 0;
-        }
-        if (prod.products.size() == 0) {
-            nullability[prod.name] = true;
-        } else {
-            const Symbol& startingSymbol = prod.products[0];
-            if (isTerminal(startingSymbol)) {
-                registryByNonTerminal[prod.name].insert(startingSymbol);
-                registry[i].insert(startingSymbol);
-            } else {
-                uncertainNonTerminals[prod.name]++;
-                uncertain.push(i);
+    auto ntInfo = [&](const Symbol& name) {
+        bool nullable = false;
+        std::unordered_set<Symbol> result;
+        for (auto index : productionsBySymbol.at(name)) {
+            auto& prod = productions[index];
+            if (prod.nullable) {
+                nullable = true;
             }
+            for (auto& symbol : prod.firstSet) {
+                result.insert(symbol);
+            }
+        }
+        return std::make_pair(nullable, result);
+    };
+
+    for (auto& prod : productions) {
+        if (nonTerminalProgress.count(prod.name) == 0) {
+            nonTerminalProgress[prod.name] = 0;
+        }
+        nonTerminalProgress[prod.name]++;
+    }
+
+    // Calculates trivial first sets
+    for (ProductionPointer i = 0; i < size(); i++) {
+        const Production& prod = productions[i];
+        prod.firstSet.clear();
+        prod.nullable = false;
+        progress[i] = {false, 0};
+
+        if (prod.size() == 0) {
+            prod.nullable = true;
+            progress[i].first = true;
+            nonTerminalProgress[prod.name]--;
+        } else {
+            const Symbol& symbol = prod[0];
+            if (isTerminal(symbol)) {
+                prod.firstSet.insert(symbol);
+                progress[i].first = true;
+                nonTerminalProgress[prod.name]--;
+            }
+        }
+
+        if (!progress[i].first) {
+            remaining.push(i);
         }
     }
 
-    while (!uncertain.empty()) {
-        std::size_t index = uncertain.front();
-        uncertain.pop();
-        bool stillUncertain = false;
-        bool isNullable = true;
+    // Calculates all remaining first sets
+    while (!remaining.empty()) {
+        ProductionPointer index = remaining.front();
+        remaining.pop();
         const Production& prod = productions[index];
-        for (auto& symbol : prod.products) {
+        SymbolPointer i = progress[index].second;
+        for (; i < prod.size(); i++) {
+            const Symbol& symbol = prod[i];
             if (isTerminal(symbol)) {
-                registryByNonTerminal[prod.name].insert(symbol);
-                registry[index].insert(symbol);
-                isNullable = false;
+                prod.firstSet.insert(symbol);
+                progress[index].first = true;
+                nonTerminalProgress[prod.name]--;
                 break;
             }
-            if (uncertainNonTerminals[symbol] > 0) {
-                uncertain.push(index);
-                stillUncertain = true;
-            } else if (symbol != prod.name) {
-                for (auto& s : registryByNonTerminal[symbol]) {
-                    registryByNonTerminal[prod.name].insert(s);
-                    registry[index].insert(s);
+
+            auto info = ntInfo(symbol);
+            bool isNullable = info.first;
+            auto& set = info.second;
+
+            if (nonTerminalProgress[symbol] > 0) {
+                if (!isNullable || symbol != prod.name) {
+                    // We are not sure if symbol derives the empty
+                    // string, so we can't continue.
+                    remaining.push(index);
+                    progress[index].second = i;
+                    break;
+                }
+
+                if (symbol == prod.name) {
+                    // symbol derives the empty string, so just skip it.
+                    continue;
                 }
             }
-            if (!nullability[symbol]) {
-                isNullable = false;
+
+            // We found a symbol which has a complete first set.
+            // Push its first set into the current one.
+            for (auto& s : set) {
+                prod.firstSet.insert(s);
+            }
+
+            if (!isNullable) {
+                // We're done.
+                progress[index].first = true;
+                nonTerminalProgress[prod.name]--;
                 break;
             }
         }
 
-        if (!stillUncertain) {
-            uncertainNonTerminals[prod.name]--;
-            if (isNullable) {
-                nullability[prod.name] = true;
-            }
+        if (i == prod.size()) {
+            // If the loop ended "naturally", this production
+            // can derive the empty string.
+            prod.nullable = true;
+            progress[index].first = true;
+            nonTerminalProgress[prod.name]--;
         }
     }
 
-    for (std::size_t i = 0; i < size(); i++) {
-        productions[i].firstSet = registry[i];
-        productions[i].nullable = ;
-    }
-
-    // for (auto& pair : registryByNonTerminal) {
+    // ECHO("####################");
+    // for (auto& pair : productionsBySymbol) {
+    //     bool nullable = false;
+    //     std::unordered_set<Symbol> result;
+    //     for (auto index : pair.second) {
+    //         auto& prod = productions[index];
+    //         if (prod.nullable) {
+    //             nullable = true;
+    //         }
+    //         for (auto& symbol : prod.firstSet) {
+    //             result.insert(symbol);
+    //         }
+    //     }
     //     TRACE(pair.first);
-    //     TRACE(nullability[pair.first]);
-    //     TRACE_IT(pair.second);
+    //     TRACE(nullable);
+    //     // TRACE(nonTerminalProgress[pair.first]);
+    //     TRACE_IT(result);
     //     ECHO("-----");
     // }
-
-    // ECHO("#######");
-    // for (auto& pair : uncertainNonTerminals) {
-    //     TRACE(pair.first);
-    //     TRACE(pair.second);
-    // }
-
-    // for (auto& v : registry) {
-    //     TRACE_IT(v);
-    //     ECHO("-----");
-    // }
-
-    // for (unsigned i = 0; i < size(); i++) {
-    //     TRACE(i);
-    //     TRACE(productions[i].name);
-    //     TRACE(nullability[productions[i].name]);
-    //     TRACE_IT(registry[i]);
-    //     ECHO("-----");
-    // }
+    // assert(false);
+    isFirstValid = true;
 }
 
 void CFG::invalidate() {
     isFirstValid = false;
+}
+
+std::string CFG::toBNF(const Production& prod) const {
+    std::string result = prod.name + " ::= ";
+    for (auto& symbol : prod.products) {
+        result += symbol;
+    }
+    return result;
 }

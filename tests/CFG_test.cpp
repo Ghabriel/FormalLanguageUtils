@@ -58,7 +58,7 @@ TEST_F(TestCFG, First) {
     EXPECT_EQ(set({"*"}), cfg.first("<T1>"));
     EXPECT_EQ(set({"(", "i"}), cfg.first("<F>"));
 
-    EXPECT_FALSE(cfg.nullable("<E>"));
+    ASSERT_FALSE(cfg.nullable("<E>"));
     EXPECT_TRUE(cfg.nullable("<E1>"));
     EXPECT_FALSE(cfg.nullable("<T>"));
     EXPECT_TRUE(cfg.nullable("<T1>"));
@@ -77,8 +77,8 @@ TEST_F(TestCFG, First) {
     cfg << "<C> ::= c<C>|";
     EXPECT_EQ(set({"a", "b", "c", "e"}), cfg.first("<S>"));
     EXPECT_EQ(set({"a"}), cfg.first("<A>"));
-    EXPECT_EQ(set({"a"}), cfg.first("<B>"));
-    EXPECT_EQ(set({"a"}), cfg.first("<C>"));
+    EXPECT_EQ(set({"b"}), cfg.first("<B>"));
+    EXPECT_EQ(set({"c"}), cfg.first("<C>"));
     EXPECT_TRUE(cfg.nullable("<S>"));
     EXPECT_TRUE(cfg.nullable("<A>"));
     EXPECT_TRUE(cfg.nullable("<B>"));
