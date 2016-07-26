@@ -15,6 +15,7 @@ CFG& CFG::add(const Symbol& name, const BNF& production) {
     }
     nonTerminals.insert(name);
     productions.push_back(std::move(prod));
+    invalidate();
     return *this;
 }
 
@@ -149,5 +150,23 @@ void CFG::select(const CFG::Symbol& symbol,
 }
 
 void CFG::updateFirst() const {
-    // TODO
+    ECHO("NOT YET IMPLEMENTED");
+    assert(false);
+    if (isFirstValid) {
+        return;
+    }
+    for (auto& prod : productions) {
+        prod.firstSet.clear();
+        for (auto& symbol : prod.products) {
+            if (isTerminal(symbol)) {
+                prod.firstSet.insert(symbol);
+                break;
+            }
+            // TODO
+        }
+    }
+}
+
+void CFG::invalidate() {
+    isFirstValid = false;
 }

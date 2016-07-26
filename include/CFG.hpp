@@ -68,7 +68,7 @@ private:
         std::string name;
         std::vector<Symbol> products;
         mutable std::unordered_set<Symbol> firstSet;
-        // std::unordered_set<Symbol> followSet;
+        // mutable std::unordered_set<Symbol> followSet;
         mutable bool nullable;
     };
     std::vector<Production> productions;
@@ -89,6 +89,8 @@ private:
     void select(const Symbol&, const std::function<void(const Production&)>&) const;
 
     void updateFirst() const;
+
+    void invalidate();
 };
 
 template<typename... Args>
