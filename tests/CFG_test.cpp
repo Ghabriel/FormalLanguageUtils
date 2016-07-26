@@ -36,12 +36,22 @@ TEST_F(TestCFG, Consistency) {
 // }
 
 TEST_F(TestCFG, First) {
-    ASSERT_NO_THROW(cfg << "<E> ::= <T><E1>");
-    ASSERT_NO_THROW(cfg << "<E1> ::= +<T><E1>|");
-    ASSERT_NO_THROW(cfg << "<T> ::= <F><T1>");
-    ASSERT_NO_THROW(cfg << "<T1> ::= *<F><T1>|");
-    ASSERT_NO_THROW(cfg << "<F> ::= (<E>)|i");
+    cfg << "<S> ::= <A><B>";
+    cfg << "<A> ::= a<A>|";
+    cfg << "<B> ::= b<B>|";
+    ASSERT_EQ(set({"a", "b"}), cfg.first("<S>"));
+    EXPECT_EQ(set({"a"}), cfg.first("<A>"));
+    EXPECT_EQ(set({"b"}), cfg.first("<B>"));
 
+    EXPECT_TRUE(cfg.nullable("<S>"));
+    EXPECT_TRUE(cfg.nullable("<A>"));
+    EXPECT_TRUE(cfg.nullable("<B>"));
+
+    cfg << "<E> ::= <T><E1>";
+    cfg << "<E1> ::= +<T><E1>|";
+    cfg << "<T> ::= <F><T1>";
+    cfg << "<T1> ::= *<F><T1>|";
+    cfg << "<F> ::= (<E>)|i";
     ASSERT_EQ(set({"(", "i"}), cfg.first("<E>"));
     EXPECT_EQ(set({"+"}), cfg.first("<E1>"));
     EXPECT_EQ(set({"(", "i"}), cfg.first("<T>"));
