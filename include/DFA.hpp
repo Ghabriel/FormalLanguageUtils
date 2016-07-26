@@ -42,7 +42,8 @@ namespace std {
 
 class DFA {
 public:
-    using Index = utils::Index;
+    // Currently, must be signed.
+    using Index = long;
 
     // Prepares this DFA to hold at least n elements
     void reserve(std::size_t);
