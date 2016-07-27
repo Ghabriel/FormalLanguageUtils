@@ -36,53 +36,85 @@ TEST_F(TestCFG, Consistency) {
 // }
 
 TEST_F(TestCFG, First) {
+    // Level: easy
     cfg << "<S> ::= <A><B>";
     cfg << "<A> ::= a<A>|";
     cfg << "<B> ::= b<B>|";
     ASSERT_EQ(set({"a", "b"}), cfg.first("<S>"));
-    EXPECT_EQ(set({"a"}), cfg.first("<A>"));
-    EXPECT_EQ(set({"b"}), cfg.first("<B>"));
+    ASSERT_EQ(set({"a"}), cfg.first("<A>"));
+    ASSERT_EQ(set({"b"}), cfg.first("<B>"));
 
-    EXPECT_TRUE(cfg.nullable("<S>"));
-    EXPECT_TRUE(cfg.nullable("<A>"));
-    EXPECT_TRUE(cfg.nullable("<B>"));
+    ASSERT_TRUE(cfg.nullable("<S>"));
+    ASSERT_TRUE(cfg.nullable("<A>"));
+    ASSERT_TRUE(cfg.nullable("<B>"));
 
+    // Level: easy (but explores an edge case)
+    cfg.clear();
+    cfg.add("<S> ::= <S>a|");
+    ASSERT_EQ(set({"a"}), cfg.first("<S>"));
+    ASSERT_TRUE(cfg.nullable("<S>"));
+
+    // Level: medium
+    cfg.clear();
     cfg << "<E> ::= <T><E1>";
     cfg << "<E1> ::= +<T><E1>|";
     cfg << "<T> ::= <F><T1>";
     cfg << "<T1> ::= *<F><T1>|";
     cfg << "<F> ::= (<E>)|i";
     ASSERT_EQ(set({"(", "i"}), cfg.first("<E>"));
-    EXPECT_EQ(set({"+"}), cfg.first("<E1>"));
-    EXPECT_EQ(set({"(", "i"}), cfg.first("<T>"));
-    EXPECT_EQ(set({"*"}), cfg.first("<T1>"));
-    EXPECT_EQ(set({"(", "i"}), cfg.first("<F>"));
+    ASSERT_EQ(set({"+"}), cfg.first("<E1>"));
+    ASSERT_EQ(set({"(", "i"}), cfg.first("<T>"));
+    ASSERT_EQ(set({"*"}), cfg.first("<T1>"));
+    ASSERT_EQ(set({"(", "i"}), cfg.first("<F>"));
 
     ASSERT_FALSE(cfg.nullable("<E>"));
-    EXPECT_TRUE(cfg.nullable("<E1>"));
-    EXPECT_FALSE(cfg.nullable("<T>"));
-    EXPECT_TRUE(cfg.nullable("<T1>"));
-    EXPECT_FALSE(cfg.nullable("<F>"));
-    EXPECT_EQ(set({"+", "(", "i"}), cfg.first("<E1><E>"));
+    ASSERT_TRUE(cfg.nullable("<E1>"));
+    ASSERT_FALSE(cfg.nullable("<T>"));
+    ASSERT_TRUE(cfg.nullable("<T1>"));
+    ASSERT_FALSE(cfg.nullable("<F>"));
+    ASSERT_EQ(set({"+", "(", "i"}), cfg.first("<E1><E>"));
 
+    // Level: medium (with loop of recursions)
     cfg.clear();
-    cfg.add("<S> ::= <S>a|");
-    EXPECT_EQ(set({"a"}), cfg.first("<S>"));
-    EXPECT_TRUE(cfg.nullable("<S>"));
+    cfg << "<S> ::= <A>x|y";
+    cfg << "<A> ::= <S>w|z";
+    ASSERT_EQ(set({"y", "z"}), cfg.first("<S>"));
+    ASSERT_EQ(set({"y", "z"}), cfg.first("<A>"));
+    ASSERT_FALSE(cfg.nullable("<S>"));
+    ASSERT_FALSE(cfg.nullable("<A>"));
 
+    // Level: medium-hard
     cfg.clear();
     cfg << "<S> ::= <A><B><C><S>e|";
     cfg << "<A> ::= a<A>|";
     cfg << "<B> ::= b<B>|";
     cfg << "<C> ::= c<C>|";
-    EXPECT_EQ(set({"a", "b", "c", "e"}), cfg.first("<S>"));
-    EXPECT_EQ(set({"a"}), cfg.first("<A>"));
-    EXPECT_EQ(set({"b"}), cfg.first("<B>"));
-    EXPECT_EQ(set({"c"}), cfg.first("<C>"));
-    EXPECT_TRUE(cfg.nullable("<S>"));
-    EXPECT_TRUE(cfg.nullable("<A>"));
-    EXPECT_TRUE(cfg.nullable("<B>"));
-    EXPECT_TRUE(cfg.nullable("<C>"));
+    ASSERT_EQ(set({"a", "b", "c", "e"}), cfg.first("<S>"));
+    ASSERT_EQ(set({"a"}), cfg.first("<A>"));
+    ASSERT_EQ(set({"b"}), cfg.first("<B>"));
+    ASSERT_EQ(set({"c"}), cfg.first("<C>"));
+    ASSERT_TRUE(cfg.nullable("<S>"));
+    ASSERT_TRUE(cfg.nullable("<A>"));
+    ASSERT_TRUE(cfg.nullable("<B>"));
+    ASSERT_TRUE(cfg.nullable("<C>"));
+
+    // Level: hard
+    cfg.clear();
+    cfg << "<S> ::= <S>s|<B><C><D>";
+    cfg << "<A> ::= <S><A>a|";
+    cfg << "<B> ::= <C>c";
+    cfg << "<C> ::= <B>b|<S>s|<A>";
+    cfg << "<D> ::= <D>d|<D><B>|";
+    ASSERT_EQ(set({"c"}), cfg.first("<S>"));
+    ASSERT_EQ(set({"c"}), cfg.first("<A>"));
+    ASSERT_EQ(set({"c"}), cfg.first("<B>"));
+    ASSERT_EQ(set({"c"}), cfg.first("<C>"));
+    ASSERT_EQ(set({"c", "d"}), cfg.first("<D>"));
+    ASSERT_FALSE(cfg.nullable("<S>"));
+    ASSERT_TRUE(cfg.nullable("<A>"));
+    ASSERT_FALSE(cfg.nullable("<B>"));
+    ASSERT_TRUE(cfg.nullable("<C>"));
+    ASSERT_TRUE(cfg.nullable("<D>"));
 }
 
 // TEST_F(TestCFG, Follow) {

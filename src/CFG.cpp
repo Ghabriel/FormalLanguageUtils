@@ -46,6 +46,7 @@ CFG& CFG::operator<<(const CFG::BNF& production) {
 
 void CFG::clear() {
     productions.clear();
+    productionsBySymbol.clear();
     nonTerminals.clear();
     terminals.clear();
     isFirstValid = false;
@@ -158,22 +159,7 @@ void CFG::updateFirst() const {
     using SymbolPointer = Index;
     std::unordered_map<ProductionPointer, std::pair<bool, SymbolPointer>> progress;
     std::unordered_map<Symbol, std::size_t> nonTerminalProgress;
-    std::queue<ProductionPointer> remaining;
-
-    auto ntInfo = [&](const Symbol& name) {
-        bool nullable = false;
-        std::unordered_set<Symbol> result;
-        for (auto index : productionsBySymbol.at(name)) {
-            auto& prod = productions[index];
-            if (prod.nullable) {
-                nullable = true;
-            }
-            for (auto& symbol : prod.firstSet) {
-                result.insert(symbol);
-            }
-        }
-        return std::make_pair(nullable, result);
-    };
+    std::unordered_set<ProductionPointer> remaining;
 
     for (auto& prod : productions) {
         if (nonTerminalProgress.count(prod.name) == 0) {
@@ -203,17 +189,22 @@ void CFG::updateFirst() const {
         }
 
         if (!progress[i].first) {
-            remaining.push(i);
+            remaining.insert(i);
         }
     }
 
-    // Calculates all remaining first sets
-    while (!remaining.empty()) {
-        ProductionPointer index = remaining.front();
-        remaining.pop();
+    using ProdSet = std::unordered_set<ProductionPointer>;
+    std::function<void(ProductionPointer, ProdSet&)> populate = [&](ProductionPointer index, ProdSet& visited) {
+        if (visited.count(index) > 0) {
+            return;
+        }
+        visited.insert(index);
+
+        remaining.erase(index);
         const Production& prod = productions[index];
         SymbolPointer i = progress[index].second;
-        for (; i < prod.size(); i++) {
+        std::size_t numProducts = prod.size();
+        while (i < numProducts) {
             const Symbol& symbol = prod[i];
             if (isTerminal(symbol)) {
                 prod.firstSet.insert(symbol);
@@ -222,29 +213,18 @@ void CFG::updateFirst() const {
                 break;
             }
 
-            auto info = ntInfo(symbol);
-            bool isNullable = info.first;
-            auto& set = info.second;
-
-            if (nonTerminalProgress[symbol] > 0) {
-                if (!isNullable || symbol != prod.name) {
-                    // We are not sure if symbol derives the empty
-                    // string, so we can't continue.
-                    remaining.push(index);
-                    progress[index].second = i;
-                    break;
+            bool isNullable = false;
+            for (auto prodIndex : productionsBySymbol.at(symbol)) {
+                auto& otherProd = productions[prodIndex];
+                if (symbol != prod.name) {
+                    populate(prodIndex, visited);
+                    for (auto& s : otherProd.firstSet) {
+                        prod.firstSet.insert(s);
+                    }
                 }
-
-                if (symbol == prod.name) {
-                    // symbol derives the empty string, so just skip it.
-                    continue;
+                if (otherProd.nullable) {
+                    isNullable = true;
                 }
-            }
-
-            // We found a symbol which has a complete first set.
-            // Push its first set into the current one.
-            for (auto& s : set) {
-                prod.firstSet.insert(s);
             }
 
             if (!isNullable) {
@@ -253,37 +233,34 @@ void CFG::updateFirst() const {
                 nonTerminalProgress[prod.name]--;
                 break;
             }
+            i++;
         }
 
         if (i == prod.size()) {
             // If the loop ended "naturally", this production
             // can derive the empty string.
+            if (!prod.nullable) {
+                remaining.clear();
+                for (std::size_t j = 0; j < size(); j++) {
+                    auto& p = productions[j];
+                    if (p.size() != 0 && !isTerminal(p[0])) {
+                        remaining.insert(j);
+                    }
+                }
+            }
             prod.nullable = true;
             progress[index].first = true;
             nonTerminalProgress[prod.name]--;
         }
+    };
+
+    // Calculates all remaining first sets
+    while (!remaining.empty()) {
+        ProductionPointer index = *remaining.begin();
+        ProdSet visited;
+        populate(index, visited);
     }
 
-    // ECHO("####################");
-    // for (auto& pair : productionsBySymbol) {
-    //     bool nullable = false;
-    //     std::unordered_set<Symbol> result;
-    //     for (auto index : pair.second) {
-    //         auto& prod = productions[index];
-    //         if (prod.nullable) {
-    //             nullable = true;
-    //         }
-    //         for (auto& symbol : prod.firstSet) {
-    //             result.insert(symbol);
-    //         }
-    //     }
-    //     TRACE(pair.first);
-    //     TRACE(nullable);
-    //     // TRACE(nonTerminalProgress[pair.first]);
-    //     TRACE_IT(result);
-    //     ECHO("-----");
-    // }
-    // assert(false);
     isFirstValid = true;
 }
 
