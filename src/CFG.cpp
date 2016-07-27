@@ -154,114 +154,104 @@ void CFG::updateFirst() const {
     if (isFirstValid) {
         return;
     }
-    using Index = std::size_t;
-    using ProductionPointer = Index;
-    using SymbolPointer = Index;
-    std::unordered_map<ProductionPointer, std::pair<bool, SymbolPointer>> progress;
-    std::unordered_map<Symbol, std::size_t> nonTerminalProgress;
-    std::unordered_set<ProductionPointer> remaining;
 
-    for (auto& prod : productions) {
-        if (nonTerminalProgress.count(prod.name) == 0) {
-            nonTerminalProgress[prod.name] = 0;
-        }
-        nonTerminalProgress[prod.name]++;
-    }
+    // Just to improve readability.
+    const bool NULLABLE = true;
 
-    // Calculates trivial first sets
-    for (ProductionPointer i = 0; i < size(); i++) {
-        const Production& prod = productions[i];
-        prod.firstSet.clear();
-        prod.nullable = false;
-        progress[i] = {false, 0};
+    // Stores information about all non-terminals for which a definitive
+    // conclusion has been found.
+    std::unordered_map<Symbol, bool> finishedNT;
 
-        if (prod.size() == 0) {
-            prod.nullable = true;
-            progress[i].first = true;
-            nonTerminalProgress[prod.name]--;
-        } else {
-            const Symbol& symbol = prod[0];
-            if (isTerminal(symbol)) {
-                prod.firstSet.insert(symbol);
-                progress[i].first = true;
-                nonTerminalProgress[prod.name]--;
-            }
-        }
-
-        if (!progress[i].first) {
-            remaining.insert(i);
-        }
-    }
-
-    using ProdSet = std::unordered_set<ProductionPointer>;
-    std::function<void(ProductionPointer, ProdSet&)> populate = [&](ProductionPointer index, ProdSet& visited) {
-        if (visited.count(index) > 0) {
+    using ProdSet = std::unordered_set<std::size_t>;
+    std::function<void(std::size_t, ProdSet&)> updateNullability = [&](std::size_t index, ProdSet& visited) {
+        const Production& prod = productions[index];
+        if (visited.count(index) > 0|| finishedNT.count(prod.name) > 0) {
             return;
         }
         visited.insert(index);
-
-        remaining.erase(index);
-        const Production& prod = productions[index];
-        SymbolPointer i = progress[index].second;
-        std::size_t numProducts = prod.size();
-        while (i < numProducts) {
-            const Symbol& symbol = prod[i];
+        prod.firstSet.clear();
+        prod.nullable = false;
+        bool allNullable = true;
+        // Tries to find the answer without recursion
+        ECHO("[START] " + toBNF(prod));
+        for (auto& symbol : prod.products) {
+            TRACE_L("\tsymbol", symbol);
             if (isTerminal(symbol)) {
-                prod.firstSet.insert(symbol);
-                progress[index].first = true;
-                nonTerminalProgress[prod.name]--;
-                break;
+                ECHO("\t[NOT NULL]");
+                return;
             }
-
-            bool isNullable = false;
-            for (auto prodIndex : productionsBySymbol.at(symbol)) {
-                auto& otherProd = productions[prodIndex];
-                if (symbol != prod.name) {
-                    populate(prodIndex, visited);
-                    for (auto& s : otherProd.firstSet) {
-                        prod.firstSet.insert(s);
-                    }
-                }
-                if (otherProd.nullable) {
-                    isNullable = true;
-                }
+            if (finishedNT.count(symbol) == 0) {
+                allNullable = false;
+            } else if (finishedNT[symbol] == !NULLABLE) {
+                ECHO("\t[NOT NULL]");
+                return;
             }
-
-            if (!isNullable) {
-                // We're done.
-                progress[index].first = true;
-                nonTerminalProgress[prod.name]--;
-                break;
-            }
-            i++;
         }
 
-        if (i == prod.size()) {
-            // If the loop ended "naturally", this production
-            // can derive the empty string.
-            if (!prod.nullable) {
-                remaining.clear();
-                for (std::size_t j = 0; j < size(); j++) {
-                    auto& p = productions[j];
-                    if (p.size() != 0 && !isTerminal(p[0])) {
-                        remaining.insert(j);
-                    }
-                }
-            }
+        if (allNullable) {
+            finishedNT[prod.name] = NULLABLE;
             prod.nullable = true;
-            progress[index].first = true;
-            nonTerminalProgress[prod.name]--;
+            ECHO("\t[NULLABLE]");
+            return;
         }
+
+        // Recursion is necessary
+        ECHO("\t[RECURSION MODE]");
+        for (auto& symbol : prod.products) {
+            if (finishedNT.count(symbol) > 0) {
+                // symbol is a nullable non-terminal (the previous loop would
+                // have returned if it wasn't).
+                continue;
+            }
+
+            std::vector<std::size_t> indexList = productionsBySymbol.at(symbol);
+            for (std::size_t i : indexList) {
+                updateNullability(i, visited);
+            }
+
+            if (finishedNT.count(symbol) == 0) {
+                // If no production marked the symbol as nullable,
+                // then it isn't.
+                finishedNT[symbol] = !NULLABLE;
+                ECHO("\t[CONCLUSION] " + symbol + " is NOT null");
+                return;
+            }
+        }
+
+        // If we are here, the production is nullable.
+        finishedNT[prod.name] = NULLABLE;
+        prod.nullable = true;
+        ECHO("\t[NULLABLE]");
     };
 
-    // Calculates all remaining first sets
-    while (!remaining.empty()) {
-        ProductionPointer index = *remaining.begin();
-        ProdSet visited;
-        populate(index, visited);
+    // Calculates nullability
+    ProdSet visited;
+    for (std::size_t counter = 0; counter < size(); counter++) {
+        updateNullability(counter, visited);
+    }
+
+    ECHO("#######################################");
+    ECHO("#######################################");
+    for (auto& pair : productionsBySymbol) {
+        // bool nullable = false;
+        // std::unordered_set<Symbol> result;
+        // for (auto index : pair.second) {
+        //     auto& prod = productions[index];
+        //     if (prod.nullable) {
+        //         nullable = true;
+        //     }
+        //     for (auto& symbol : prod.firstSet) {
+        //         result.insert(symbol);
+        //     }
+        // }
+        TRACE(pair.first);
+        TRACE(finishedNT[pair.first]);
+        // TRACE_IT(result);
+        ECHO("-----");
     }
 
     isFirstValid = true;
+    assert(false);
 }
 
 void CFG::invalidate() {
