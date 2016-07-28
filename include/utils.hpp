@@ -17,6 +17,11 @@
         }\
     }
 #define ECHO(x) std::cout << (x) << std::endl
+#define ECHOI(x,limit) \
+    for (unsigned i = 0; i < limit; i++) {\
+        std::cout << "\t"; \
+    }\
+    ECHO(x);
 
 namespace utils {
     using Index = long;

@@ -99,6 +99,7 @@ private:
     void select(const Symbol&, const std::function<void(const Production&)>&) const;
 
     void updateFirst() const;
+    void updateNullability(std::size_t, std::unordered_set<std::size_t>&, std::unordered_map<Symbol, bool>&) const;
 
     void invalidate();
 

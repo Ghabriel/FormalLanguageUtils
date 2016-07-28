@@ -155,103 +155,161 @@ void CFG::updateFirst() const {
         return;
     }
 
-    // Just to improve readability.
-    const bool NULLABLE = true;
-
     // Stores information about all non-terminals for which a definitive
-    // conclusion has been found.
-    std::unordered_map<Symbol, bool> finishedNT;
+    // conclusion about nullability has been found.
+    std::unordered_map<Symbol, bool> nullabilityTable;
 
+    // Avoids infinite loops in recursive grammars
     using ProdSet = std::unordered_set<std::size_t>;
-    std::function<void(std::size_t, ProdSet&)> updateNullability = [&](std::size_t index, ProdSet& visited) {
+    ProdSet visited;
+
+    // Calculates nullability of all non-terminals
+    for (std::size_t counter = 0; counter < size(); counter++) {
+        updateNullability(counter, visited, nullabilityTable);
+    }
+
+    std::unordered_map<Symbol, std::unordered_set<Symbol>> firstTable;
+
+    auto push = [&firstTable](const Production& production, const Symbol& symbol) {
+        production.firstSet.insert(symbol);
+        firstTable[production.name].insert(symbol);
+    };
+
+    std::function<void(std::size_t, ProdSet&)> populate = [&](std::size_t index, ProdSet& visited) {
         const Production& prod = productions[index];
-        if (visited.count(index) > 0|| finishedNT.count(prod.name) > 0) {
+        if (visited.count(index) > 0) {
             return;
         }
         visited.insert(index);
-        prod.firstSet.clear();
-        prod.nullable = false;
-        bool allNullable = true;
-        // Tries to find the answer without recursion
-        ECHO("[START] " + toBNF(prod));
+        // ECHO(toBNF(prod));
         for (auto& symbol : prod.products) {
-            TRACE_L("\tsymbol", symbol);
             if (isTerminal(symbol)) {
-                ECHO("\t[NOT NULL]");
+                // ECHOI(symbol + " -> FIRST(" + toBNF(prod) + ")", 1);
+                push(prod, symbol);
                 return;
-            }
-            if (finishedNT.count(symbol) == 0) {
-                allNullable = false;
-            } else if (finishedNT[symbol] == !NULLABLE) {
-                ECHO("\t[NOT NULL]");
-                return;
-            }
-        }
-
-        if (allNullable) {
-            finishedNT[prod.name] = NULLABLE;
-            prod.nullable = true;
-            ECHO("\t[NULLABLE]");
-            return;
-        }
-
-        // Recursion is necessary
-        ECHO("\t[RECURSION MODE]");
-        for (auto& symbol : prod.products) {
-            if (finishedNT.count(symbol) > 0) {
-                // symbol is a nullable non-terminal (the previous loop would
-                // have returned if it wasn't).
-                continue;
             }
 
             std::vector<std::size_t> indexList = productionsBySymbol.at(symbol);
+            // ECHO("[RECURSION]");
             for (std::size_t i : indexList) {
-                updateNullability(i, visited);
+                // TRACE(i);
+                populate(i, visited);
+            }
+            // ECHO("----");
+
+            for (auto& s : firstTable[symbol]) {
+                // ECHOI(s + " -> FIRST(" + toBNF(prod) + ")", 1);
+                push(prod, s);
             }
 
-            if (finishedNT.count(symbol) == 0) {
-                // If no production marked the symbol as nullable,
-                // then it isn't.
-                finishedNT[symbol] = !NULLABLE;
-                ECHO("\t[CONCLUSION] " + symbol + " is NOT null");
+            if (!nullabilityTable[symbol]) {
                 return;
             }
         }
 
-        // If we are here, the production is nullable.
-        finishedNT[prod.name] = NULLABLE;
         prod.nullable = true;
-        ECHO("\t[NULLABLE]");
     };
 
-    // Calculates nullability
-    ProdSet visited;
-    for (std::size_t counter = 0; counter < size(); counter++) {
-        updateNullability(counter, visited);
+    // The first iteration calculates the preliminary first set of all
+    // productions; the second ensures all incomplete first sets are fixed.
+    for (unsigned iter = 0; iter < 2; iter++) {
+        visited.clear();
+        for (std::size_t counter = 0; counter < size(); counter++) {
+            populate(counter, visited);
+        }
+        // ECHO("#############################################");
     }
 
-    ECHO("#######################################");
-    ECHO("#######################################");
-    for (auto& pair : productionsBySymbol) {
-        // bool nullable = false;
-        // std::unordered_set<Symbol> result;
-        // for (auto index : pair.second) {
-        //     auto& prod = productions[index];
-        //     if (prod.nullable) {
-        //         nullable = true;
-        //     }
-        //     for (auto& symbol : prod.firstSet) {
-        //         result.insert(symbol);
-        //     }
-        // }
-        TRACE(pair.first);
-        TRACE(finishedNT[pair.first]);
-        // TRACE_IT(result);
-        ECHO("-----");
-    }
+    // ECHO("#######################################");
+    // ECHO("#######################################");
+    // for (auto& prod : productions) {
+    //     ECHO(toBNF(prod));
+    //     TRACE(prod.nullable);
+    //     TRACE_IT(prod.firstSet);
+    //     ECHO("");
+    // }
+    // for (auto& pair : productionsBySymbol) {
+    //     std::unordered_set<Symbol> result;
+    //     for (auto index : pair.second) {
+    //         auto& prod = productions[index];
+    //         for (auto& symbol : prod.firstSet) {
+    //             result.insert(symbol);
+    //         }
+    //     }
+    //     TRACE(pair.first);
+    //     TRACE(nullabilityTable[pair.first]);
+    //     TRACE_IT(result);
+    //     ECHO("-----");
+    // }
 
     isFirstValid = true;
-    assert(false);
+    // assert(false);
+}
+
+void CFG::updateNullability(std::size_t index, std::unordered_set<std::size_t>& visited,
+    std::unordered_map<Symbol, bool>& finishedNT) const {
+
+    // Just to improve readability.
+    const bool NULLABLE = true;
+
+    const Production& prod = productions[index];
+    if (visited.count(index) > 0|| finishedNT.count(prod.name) > 0) {
+        return;
+    }
+    visited.insert(index);
+    prod.firstSet.clear();
+    prod.nullable = false;
+    bool allNullable = true;
+    // Tries to find the answer without recursion
+    // ECHO("[START] " + toBNF(prod));
+    for (auto& symbol : prod.products) {
+        // TRACE_L("\tsymbol", symbol);
+        if (isTerminal(symbol)) {
+            // ECHO("\t[NOT NULL]");
+            return;
+        }
+        if (finishedNT.count(symbol) == 0) {
+            allNullable = false;
+        } else if (finishedNT[symbol] == !NULLABLE) {
+            // ECHO("\t[NOT NULL]");
+            return;
+        }
+    }
+
+    if (allNullable) {
+        finishedNT[prod.name] = NULLABLE;
+        prod.nullable = true;
+        // ECHO("\t[NULLABLE]");
+        return;
+    }
+
+    // Recursion is necessary
+    // ECHO("\t[RECURSION MODE]");
+    for (auto& symbol : prod.products) {
+        if (finishedNT.count(symbol) > 0) {
+            // symbol is a nullable non-terminal (the previous loop would
+            // have returned if it wasn't).
+            continue;
+        }
+
+        std::vector<std::size_t> indexList = productionsBySymbol.at(symbol);
+        for (std::size_t i : indexList) {
+            updateNullability(i, visited, finishedNT);
+        }
+
+        if (finishedNT.count(symbol) == 0) {
+            // If no production marked the symbol as nullable,
+            // then it isn't.
+            finishedNT[symbol] = !NULLABLE;
+            // ECHO("\t[CONCLUSION] " + symbol + " is NOT null");
+            return;
+        }
+    }
+
+    // If we are here, the production is nullable.
+    finishedNT[prod.name] = NULLABLE;
+    prod.nullable = true;
+    // ECHO("\t[NULLABLE]");
 }
 
 void CFG::invalidate() {
