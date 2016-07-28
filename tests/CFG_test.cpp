@@ -159,23 +159,23 @@ TEST_F(TestCFG, Range) {
 //     EXPECT_TRUE(cfg.endable("<F>"));
 // }
 
-// TEST_F(TestCFG, Recursion) {
-//     cfg << "<S> ::= a<S>b|";
-//     EXPECT_FALSE(cfg.isRecursive());
+TEST_F(TestCFG, Recursion) {
+    cfg << "<S> ::= a<S>b|";
+    EXPECT_FALSE(cfg.isRecursive());
 
-//     cfg.clear();
-//     cfg << "<S> ::= <S>a|";
-//     EXPECT_TRUE(cfg.isRecursive());
+    cfg.clear();
+    cfg << "<S> ::= <S>a|";
+    EXPECT_TRUE(cfg.isRecursive());
 
-//     cfg.clear();
-//     cfg << "<S> ::= <A><S><B>|";
-//     cfg << "<A> ::= a|";
-//     cfg << "<B> ::= <S>b|c";
-//     ASSERT_TRUE(cfg.isRecursive());
-//     EXPECT_EQ(CFG::DIRECT, cfg.recursionType("<S>"));
-//     EXPECT_EQ(CFG::NONE, cfg.recursionType("<A>"));
-//     EXPECT_EQ(CFG::INDIRECT, cfg.recursionType("<B>"));
-// }
+    cfg.clear();
+    cfg << "<S> ::= <A><S><B>|";
+    cfg << "<A> ::= a|";
+    cfg << "<B> ::= <S>b|c";
+    ASSERT_TRUE(cfg.isRecursive());
+    EXPECT_EQ(CFG::DIRECT, cfg.recursionType("<S>"));
+    EXPECT_EQ(CFG::NONE, cfg.recursionType("<A>"));
+    EXPECT_EQ(CFG::INDIRECT, cfg.recursionType("<B>"));
+}
 
 // TEST_F(TestCFG, Factorization) {
 //     cfg << "<S> ::= a<S>b|";

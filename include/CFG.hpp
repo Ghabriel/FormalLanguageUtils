@@ -22,6 +22,12 @@ public:
     using Symbol = std::string;
     using BNF = std::string;
 
+    enum ReferenceType {
+        NONE,
+        DIRECT,
+        INDIRECT
+    };
+
     // Adds production(s) to this CFG, returning itself to allow chaining.
     template<typename... Args>
     CFG& add(const Symbol&, const BNF&, Args...);
@@ -61,8 +67,14 @@ public:
 
     // Returns the set of non-terminals that are left-reachable
     // by a given sequence of symbols.
-    // Complexity: O(s + L) on first call, O(L) on subsequent calls
+    // Complexity: O(sL)
     std::unordered_set<Symbol> range(const BNF&) const;
+
+    // Checks if this CFG is left-recursive.
+    bool isRecursive() const;
+
+    // Returns the recursion type of a non-terminal.
+    ReferenceType recursionType(const Symbol&) const;
 
 private:
     class Production {

@@ -124,6 +124,41 @@ std::unordered_set<CFG::Symbol> CFG::range(const CFG::BNF& symbolSequence) const
     return result;
 }
 
+bool CFG::isRecursive() const {
+    auto nonTerminals = getNonTerminals();
+    for (auto& symbol : nonTerminals) {
+        if (range(symbol).count(symbol) > 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+CFG::ReferenceType CFG::recursionType(const CFG::Symbol& symbol) const {
+    if (isTerminal(symbol)) {
+        return ReferenceType::NONE;
+    }
+
+    for (std::size_t index : productionsBySymbol.at(symbol)) {
+        const Production& prod = productions[index];
+        for (auto& s : prod.products) {
+            if (s == symbol) {
+                return ReferenceType::DIRECT;
+            }
+
+            if (isTerminal(s) || !nullable(s)) {
+                break;
+            }
+        }
+    }
+
+    if (range(symbol).count(symbol) > 0) {
+        return ReferenceType::INDIRECT;
+    }
+
+    return ReferenceType::NONE;
+}
+
 std::vector<CFG::Symbol> CFG::toSymbolSequence(const CFG::BNF& input) const {
     std::vector<Symbol> result;
     std::string buffer;
