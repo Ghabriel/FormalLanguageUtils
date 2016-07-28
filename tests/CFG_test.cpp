@@ -25,16 +25,6 @@ TEST_F(TestCFG, Consistency) {
     EXPECT_TRUE(cfg.isConsistent());
 }
 
-// TEST_F(TestCFG, Range) {
-//     cfg << "<S> ::= <S>a | <A><B> | c";
-//     cfg << "<A> ::= d<A> | <A>e |";
-//     cfg << "<B> ::= b";
-
-//     EXPECT_EQ(set({"S", "A", "B"}), cfg.range("<S>"));
-//     EXPECT_EQ(set({"A"}), cfg.range("<A>"));
-//     EXPECT_EQ(set(), cfg.range("<B>"));
-// }
-
 TEST_F(TestCFG, First) {
     // Level: easy
     cfg << "<S> ::= <A><B>";
@@ -115,6 +105,27 @@ TEST_F(TestCFG, First) {
     ASSERT_FALSE(cfg.nullable("<B>"));
     ASSERT_TRUE(cfg.nullable("<C>"));
     ASSERT_TRUE(cfg.nullable("<D>"));
+}
+
+TEST_F(TestCFG, Range) {
+    cfg << "<S> ::= <S>a|<A><B>|c";
+    cfg << "<A> ::= d<A>|<A>e|";
+    cfg << "<B> ::= b";
+    ASSERT_EQ(set({"<S>", "<A>", "<B>"}), cfg.range("<S>"));
+    ASSERT_EQ(set({"<A>"}), cfg.range("<A>"));
+    ASSERT_EQ(set(), cfg.range("<B>"));
+
+    cfg.clear();
+    cfg << "<S> ::= <S>s|<B><C><D>";
+    cfg << "<A> ::= <S><A>a|";
+    cfg << "<B> ::= <C>c";
+    cfg << "<C> ::= <B>b|<S>s|<A>";
+    cfg << "<D> ::= <D>d|<D><B>|";
+    ASSERT_EQ(set({"<S>", "<A>", "<B>", "<C>"}), cfg.range("<S>"));
+    ASSERT_EQ(set({"<S>", "<A>", "<B>", "<C>"}), cfg.range("<A>"));
+    ASSERT_EQ(set({"<S>", "<A>", "<B>", "<C>"}), cfg.range("<B>"));
+    ASSERT_EQ(set({"<S>", "<A>", "<B>", "<C>"}), cfg.range("<C>"));
+    ASSERT_EQ(set({"<S>", "<A>", "<B>", "<C>", "<D>"}), cfg.range("<D>"));
 }
 
 // TEST_F(TestCFG, Follow) {

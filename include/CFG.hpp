@@ -52,12 +52,17 @@ public:
     // Returns the first set of a sequence of symbols.
     // The first call is slower due to multiple first set calculations,
     // but subsequent calls are faster due to caching, until invalidated.
-    // Complexity:
+    // Complexity: O(s + L) on first call, O(L) on subsequent calls
     std::unordered_set<Symbol> first(const BNF&) const;
 
     // Checks if a sequence of symbols is able to derive the empty string.
-    // Complexity:
+    // Complexity: O(s + L) on first call, O(L) on subsequent calls
     bool nullable(const BNF&) const;
+
+    // Returns the set of non-terminals that are left-reachable
+    // by a given sequence of symbols.
+    // Complexity: O(s + L) on first call, O(L) on subsequent calls
+    std::unordered_set<Symbol> range(const BNF&) const;
 
 private:
     class Production {
@@ -85,6 +90,7 @@ private:
     std::unordered_set<Symbol> nonTerminals;
     std::unordered_set<Symbol> terminals;
     mutable bool isFirstValid = false;
+    mutable std::unordered_map<Symbol, bool> nullabilityBySymbol;
 
     // Converts a BNF string to a sequence of symbols.
     // Complexity: O(L)
@@ -100,6 +106,9 @@ private:
 
     void updateFirst() const;
     void updateNullability(std::size_t, std::unordered_set<std::size_t>&, std::unordered_map<Symbol, bool>&) const;
+    void populateRange(std::size_t, std::unordered_set<Symbol>&, std::unordered_set<std::size_t>&) const;
+    bool populateRangeBySymbol(const Symbol&, std::unordered_set<Symbol>&,
+        std::unordered_set<std::size_t>&, bool = true) const;
 
     void invalidate();
 

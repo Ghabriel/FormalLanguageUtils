@@ -105,17 +105,23 @@ bool CFG::nullable(const CFG::BNF& symbolSequence) const {
     std::vector<Symbol> symbols = toSymbolSequence(symbolSequence);
     updateFirst();
     for (Symbol& symbol : symbols) {
-        bool found = false;
-        select(symbol, [&](const Production& prod) {
-            if (prod.nullable) {
-                found = true;
-            }
-        });
-        if (!found) {
+        if (isTerminal(symbol) || !nullabilityBySymbol[symbol]) {
             return false;
         }
     }
     return true;
+}
+
+std::unordered_set<CFG::Symbol> CFG::range(const CFG::BNF& symbolSequence) const {
+    std::vector<Symbol> symbols = toSymbolSequence(symbolSequence);
+    std::unordered_set<Symbol> result;
+    for (auto& symbol : symbols) {
+        std::unordered_set<std::size_t> visited;
+        if (populateRangeBySymbol(symbol, result, visited, false)) {
+            break;
+        }
+    }
+    return result;
 }
 
 std::vector<CFG::Symbol> CFG::toSymbolSequence(const CFG::BNF& input) const {
@@ -157,7 +163,8 @@ void CFG::updateFirst() const {
 
     // Stores information about all non-terminals for which a definitive
     // conclusion about nullability has been found.
-    std::unordered_map<Symbol, bool> nullabilityTable;
+    nullabilityBySymbol.clear();
+    std::unordered_map<Symbol, bool>& nullabilityTable = nullabilityBySymbol;
 
     // Avoids infinite loops in recursive grammars
     using ProdSet = std::unordered_set<std::size_t>;
@@ -253,7 +260,7 @@ void CFG::updateNullability(std::size_t index, std::unordered_set<std::size_t>& 
     const bool NULLABLE = true;
 
     const Production& prod = productions[index];
-    if (visited.count(index) > 0|| finishedNT.count(prod.name) > 0) {
+    if (visited.count(index) > 0 || finishedNT.count(prod.name) > 0) {
         return;
     }
     visited.insert(index);
@@ -310,6 +317,39 @@ void CFG::updateNullability(std::size_t index, std::unordered_set<std::size_t>& 
     finishedNT[prod.name] = NULLABLE;
     prod.nullable = true;
     // ECHO("\t[NULLABLE]");
+}
+
+void CFG::populateRange(std::size_t index, std::unordered_set<CFG::Symbol>& result,
+    std::unordered_set<std::size_t>& visited) const {
+
+    if (visited.count(index) > 0) {
+        return;
+    }
+    visited.insert(index);
+    const Production& prod = productions[index];
+    for (auto& symbol : prod.products) {
+        if (populateRangeBySymbol(symbol, result, visited)) {
+            return;
+        }
+    }
+}
+
+bool CFG::populateRangeBySymbol(const Symbol& symbol, std::unordered_set<CFG::Symbol>& result,
+    std::unordered_set<std::size_t>& visited, bool push) const {
+
+    if (isTerminal(symbol)) {
+        return true;
+    }
+
+    if (push) {
+        result.insert(symbol);
+    }
+
+    for (std::size_t index : productionsBySymbol.at(symbol)) {
+        populateRange(index, result, visited);
+    }
+
+    return !nullable(symbol);
 }
 
 void CFG::invalidate() {
