@@ -71,10 +71,26 @@ public:
     std::unordered_set<Symbol> range(const BNF&) const;
 
     // Checks if this CFG is left-recursive.
+    // Complexity: O(ns)
     bool isRecursive() const;
 
     // Returns the recursion type of a non-terminal.
+    // Complexity: O(sL)
     ReferenceType recursionType(const Symbol&) const;
+
+    // Checks if this CFG is factored.
+    // Complexity: O(n(n^2 + s)) on first call, O(n^3) on subsequent calls
+    bool isFactored() const;
+
+    // Returns the non-factoring type of a non-terminal.
+    // Complexity: O(n^2 + s) on first call, O(n^2) on subsequent calls
+    ReferenceType nonFactoringType(const Symbol&) const;
+
+    CFG withoutRecursion() const;
+
+    bool operator==(const CFG&) const;
+
+    void debug() const;
 
 private:
     class Production {
@@ -125,6 +141,7 @@ private:
     void invalidate();
 
     std::string toBNF(const Production&) const;
+    std::string name(const Symbol&) const;
 };
 
 template<typename... Args>

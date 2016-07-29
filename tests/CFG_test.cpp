@@ -177,40 +177,53 @@ TEST_F(TestCFG, Recursion) {
     EXPECT_EQ(CFG::INDIRECT, cfg.recursionType("<B>"));
 }
 
-// TEST_F(TestCFG, Factorization) {
-//     cfg << "<S> ::= a<S>b|";
-//     EXPECT_TRUE(cfg.isFactored());
+TEST_F(TestCFG, Factorization) {
+    cfg << "<S> ::= a<S>b|";
+    EXPECT_TRUE(cfg.isFactored());
 
-//     cfg.clear();
-//     cfg << "<S> ::= <A><S><B>|";
-//     cfg << "<A> ::= a|";
-//     cfg << "<B> ::= <S>b|<C>";
-//     cfg << "<C> ::= c<C>|c<A>|";
-//     ASSERT_FALSE(cfg.isFactored());
-//     EXPECT_EQ(CFG::NONE, cfg.nonFactoringType("<S>"));
-//     EXPECT_EQ(CFG::NONE, cfg.nonFactoringType("<A>"));
-//     EXPECT_EQ(CFG::INDIRECT, cfg.nonFactoringType("<B>"));
-//     EXPECT_EQ(CFG::DIRECT, cfg.nonFactoringType("<C>"));
-// }
+    cfg.clear();
+    cfg << "<S> ::= <A><S><B>|";
+    cfg << "<A> ::= a|";
+    cfg << "<B> ::= <S>b|<C>";
+    cfg << "<C> ::= c<C>|c<A>|";
+    ASSERT_FALSE(cfg.isFactored());
+    EXPECT_EQ(CFG::NONE, cfg.nonFactoringType("<S>"));
+    EXPECT_EQ(CFG::NONE, cfg.nonFactoringType("<A>"));
+    EXPECT_EQ(CFG::INDIRECT, cfg.nonFactoringType("<B>"));
+    EXPECT_EQ(CFG::DIRECT, cfg.nonFactoringType("<C>"));
+}
 
-// TEST_F(TestCFG, RecursionElimination) {
-//     cfg << "<S> ::= <S>a|b";
-//     CFG expected;
-//     expected << "<S> ::= b<S'>";
-//     expected << "<S'> ::= a<S'>|";
-//     EXPECT_EQ(expected, cfg.withoutRecursion());
+TEST_F(TestCFG, RecursionElimination) {
+    cfg << "<S> ::= <S>a|b";
+    CFG expected;
+    expected << "<S> ::= b<S'>";
+    expected << "<S'> ::= a<S'>|";
+    EXPECT_EQ(expected, cfg.withoutRecursion());
 
-//     cfg.clear();
-//     cfg << "<S> ::= <A>a|a";
-//     cfg << "<A> ::= <B>b|b";
-//     cfg << "<B> ::= <S>c|c";
-//     expected.clear();
-//     expected << "<S> ::= <A>a|a";
-//     expected << "<A> ::= <B>b|b";
-//     expected << "<B> ::= bac<B'>|ac<B'>|c<B'>";
-//     expected << "<B'> ::= bac<B'>|";
-//     EXPECT_EQ(expected, cfg.withoutRecursion());
-// }
+    cfg.clear();
+    cfg << "<S> ::= <S><S>a|b<A>";
+    cfg << "<A> ::= b<B>c|<A>e|";
+    cfg << "<B> ::= <B>a|<B>b|c|d|";
+    expected.clear();
+    expected << "<S> ::= b<A><S'>";
+    expected << "<S'> ::= <S>a<S'>|";
+    expected << "<A> ::= b<B>c<A'>|<A'>";
+    expected << "<A'> ::= e<A'>|";
+    expected << "<B> ::= c<B'>|d<B'>|<B'>";
+    expected << "<B'> ::= a<B'>|b<B'>|";
+    EXPECT_EQ(expected, cfg.withoutRecursion());
+
+    // cfg.clear();
+    // cfg << "<S> ::= <A>a|a";
+    // cfg << "<A> ::= <B>b|b";
+    // cfg << "<B> ::= <S>c|c";
+    // expected.clear();
+    // expected << "<S> ::= <A>a|a";
+    // expected << "<A> ::= <B>b|b";
+    // expected << "<B> ::= bac<B'>|ac<B'>|c<B'>";
+    // expected << "<B'> ::= bac<B'>|";
+    // EXPECT_EQ(expected, cfg.withoutRecursion());
+}
 
 // TEST_F(TestCFG, FactorizationElimination) {
 //     cfg << "<S> ::= a<S>b|ac";

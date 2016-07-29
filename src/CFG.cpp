@@ -159,6 +159,132 @@ CFG::ReferenceType CFG::recursionType(const CFG::Symbol& symbol) const {
     return ReferenceType::NONE;
 }
 
+bool CFG::isFactored() const {
+    auto nonTerminals = getNonTerminals();
+    for (auto& symbol : nonTerminals) {
+        if (nonFactoringType(symbol) != ReferenceType::NONE) {
+            return false;
+        }
+    }
+    return true;
+}
+
+CFG::ReferenceType CFG::nonFactoringType(const CFG::Symbol& symbol) const {
+    if (isTerminal(symbol)) {
+        return ReferenceType::NONE;
+    }
+    updateFirst();
+    std::unordered_set<Symbol> history;
+    std::unordered_set<Symbol> firstSets;
+    bool indirect = false;
+    for (std::size_t index : productionsBySymbol.at(symbol)) {
+        const Production& prod = productions[index];
+        if (prod.size() == 0) {
+            continue;
+        }
+
+        if (isTerminal(prod[0])) {
+            if (history.count(prod[0]) > 0) {
+                return ReferenceType::DIRECT;
+            }
+            history.insert(prod[0]);
+        }
+
+        if (!indirect) {
+            for (auto& s : prod.firstSet) {
+                if (firstSets.count(s) > 0) {
+                    indirect = true;
+                    break;
+                }
+                firstSets.insert(s);
+            }
+        }
+    }
+
+    return indirect ? ReferenceType::INDIRECT : ReferenceType::NONE;
+}
+
+CFG CFG::withoutRecursion() const {
+    CFG result;
+    auto nonTerminals = getNonTerminals();
+    // unsigned counter = 0;
+    for (auto& nonTerminal : nonTerminals) {
+        ReferenceType recType = recursionType(nonTerminal);
+        if (recType == ReferenceType::NONE) {
+            for (std::size_t index : productionsBySymbol.at(nonTerminal)) {
+                const Production& prod = productions[index];
+                result << toBNF(prod);
+            }
+            continue;
+        }
+        if (recType == ReferenceType::INDIRECT) {
+            ECHO("NOT YET IMPLEMENTED");
+            assert(false);
+        }
+
+        Symbol newNT = "<" + name(nonTerminal) + "'>";
+        for (std::size_t index : productionsBySymbol.at(nonTerminal)) {
+            const Production& prod = productions[index];
+            std::size_t i;
+            BNF newProd;
+            if (prod.size() > 0 && prod[0] == nonTerminal) {
+                i = 1;
+                newProd = newNT;
+            } else {
+                i = 0;
+                newProd = nonTerminal;
+            }
+            newProd += " ::= ";
+            while (i < prod.size()) {
+                newProd += prod[i];
+                i++;
+            }
+            newProd += newNT;
+            result << newProd;
+        }
+        result << newNT + " ::= ";
+    }
+
+
+    return result;
+}
+
+bool CFG::operator==(const CFG& other) const {
+    if (size() != other.size()) {
+        return false;
+    }
+    std::unordered_set<BNF> productionList;
+    for (auto& production : productions) {
+        productionList.insert(toBNF(production));
+    }
+
+    for (auto& production : other.productions) {
+        if (productionList.count(toBNF(production)) == 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void CFG::debug() const {
+    for (auto& symbol : getNonTerminals()) {
+        BNF content = symbol + " ::= ";
+        bool ignore = true;
+        for (std::size_t index : productionsBySymbol.at(symbol)) {
+            const Production& prod = productions[index];
+            if (!ignore) {
+                content += "|";
+            } else {
+                ignore = false;
+            }
+            for (auto& s : prod.products) {
+                content += s;
+            }
+        }
+        ECHO(content);
+    }
+}
+
 std::vector<CFG::Symbol> CFG::toSymbolSequence(const CFG::BNF& input) const {
     std::vector<Symbol> result;
     std::string buffer;
@@ -397,4 +523,11 @@ std::string CFG::toBNF(const Production& prod) const {
         result += symbol;
     }
     return result;
+}
+
+std::string CFG::name(const CFG::Symbol& symbol) const {
+    if (isTerminal(symbol)) {
+        return symbol;
+    }
+    return symbol.substr(1, symbol.size() - 2);
 }
