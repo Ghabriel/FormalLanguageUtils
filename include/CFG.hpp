@@ -11,6 +11,7 @@
  * In the complexity comments, the following definitions apply:
  *   'n': number of productions of the CFG;
  *   's': number of symbols (both terminals and non-terminals) of the CFG;
+ *   'p': maximum number of symbols on the right-hand side of the productions;
  *   'L': number of symbols in the BNF string received as input.
  * Note that the result of several operations is cached to improve
  * performance. Some of these cached structures are invalidated when
@@ -64,6 +65,10 @@ public:
     // Returns the follow set of a given non-terminal.
     // The first call is slower due to multiple follow set calculations,
     // but subsequent calls are faster due to caching, until invalidated.
+    // Returns an empty set for terminals.
+    // Complexity:
+    //     O(np^2) on first call if it's a non-terminal,
+    //     O(1) on subsequent calls or if it's a terminal
     std::unordered_set<Symbol> follow(const Symbol&) const;
 
     // Checks if a sequence of symbols is able to derive the empty string.
@@ -72,6 +77,9 @@ public:
 
     // Checks if a given non-terminal is endable, i.e, can be the
     // last symbol of a derivation sequence. Returns false for terminals.
+    // Complexity:
+    //     O(np^2) on first call if it's a non-terminal,
+    //     O(1) on subsequent calls or if it's a terminal
     bool endable(const Symbol&) const;
 
     // Returns the set of non-terminals that are left-reachable
@@ -104,6 +112,7 @@ public:
     bool operator==(const CFG&) const;
 
     // Returns a BNF representation of this CFG.
+    // Complexity: O(s)
     BNF debug() const;
 
 private:
@@ -148,15 +157,36 @@ private:
     // Complexity: O(f), where f is the complexity of the callback.
     void select(const Symbol&, const std::function<void(const Production&)>&) const;
 
+    // Calculates the first set of all non-terminals of this CFG.
+    // Complexity: O(s) on first call, O(1) on subsequent calls
     void updateFirst() const;
+
+    // Updates the nullability information about a production
+    // and all other productions it references.
+    // Complexity: O(s)
     void updateNullability(std::size_t, std::unordered_set<std::size_t>&, std::unordered_map<Symbol, bool>&) const;
+
+    // Updates the range information about a production and all
+    // other productions it references.
+    // Complexity: O(s)
     void populateRange(std::size_t, std::unordered_set<Symbol>&, std::unordered_set<std::size_t>&) const;
+
+    // Updates the range information about a symbol and all
+    // other symbols it references.
+    // Complexity: O(s)
     bool populateRangeBySymbol(const Symbol&, std::unordered_set<Symbol>&,
         std::unordered_set<std::size_t>&, bool = true) const;
 
+    // Invalidates all cached structures.
+    // Complexity: O(1)
     void invalidate();
 
+    // Returns a BNF representation of a production.
+    // Complexity: O(p)
     std::string toBNF(const Production&) const;
+
+    // Returns the name of a symbol.
+    // Complexity: O(1) if it's a terminal, otherwise O(length of name)
     std::string name(const Symbol&) const;
 };
 

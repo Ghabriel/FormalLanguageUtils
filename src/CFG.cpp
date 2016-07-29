@@ -49,8 +49,7 @@ void CFG::clear() {
     productionsBySymbol.clear();
     nonTerminals.clear();
     terminals.clear();
-    isFirstValid = false;
-    isFollowValid = false;
+    invalidate();
 }
 
 std::size_t CFG::size() const {
@@ -103,9 +102,8 @@ std::unordered_set<CFG::Symbol> CFG::first(const CFG::BNF& symbolSequence) const
 }
 
 std::unordered_set<CFG::Symbol> CFG::follow(const Symbol& nonTerminal) const {
-    std::unordered_set<Symbol> result;
     if (isTerminal(nonTerminal)) {
-        return result;
+        return {};
     }
 
     if (isFollowValid) {
@@ -117,6 +115,7 @@ std::unordered_set<CFG::Symbol> CFG::follow(const Symbol& nonTerminal) const {
     followSet.clear();
     followSet[productions[0].name].insert(END_OF_STRING);
     std::unordered_map<Symbol, std::unordered_set<Symbol>> dependencies;
+    // Calculates all first-based follow sets, keeping track of dependencies
     for (auto& prod : productions) {
         const std::string& name = prod.name;
         std::size_t numProducts = prod.size();
@@ -141,6 +140,7 @@ std::unordered_set<CFG::Symbol> CFG::follow(const Symbol& nonTerminal) const {
         }
     }
 
+    // Solves all dependencies
     bool stable = false;
     while (!stable) {
         stable = true;
@@ -160,6 +160,8 @@ std::unordered_set<CFG::Symbol> CFG::follow(const Symbol& nonTerminal) const {
 
     endableNonTerminals.clear();
     std::unordered_set<Symbol> nonTerminals = getNonTerminals();
+    // Removes END_OF_STRING of all follow sets and tags those who have it
+    // as endable non-terminals.
     for (auto& symbol : nonTerminals) {
         if (followSet[symbol].count(END_OF_STRING) > 0) {
             endableNonTerminals.insert(symbol);
@@ -167,6 +169,7 @@ std::unordered_set<CFG::Symbol> CFG::follow(const Symbol& nonTerminal) const {
         }
     }
 
+    // Uncomment in case of emergency
     // for (auto& pair : followSet) {
     //     TRACE(pair.first);
     //     TRACE_IT(pair.second);
@@ -604,6 +607,7 @@ bool CFG::populateRangeBySymbol(const Symbol& symbol, std::unordered_set<CFG::Sy
 
 void CFG::invalidate() {
     isFirstValid = false;
+    isFollowValid = false;
 }
 
 std::string CFG::toBNF(const Production& prod) const {
