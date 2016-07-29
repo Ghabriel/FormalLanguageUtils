@@ -43,7 +43,11 @@ CFG& CFG::add(const Symbol& name, const BNF& rhs) {
 }
 
 CFG& CFG::add(const CFG::BNF& prodGroup) {
+    TRACE(prodGroup);
+    TRACE(&representation);
+    ECHO("BEFORE");
     auto prods = representation.decompose(prodGroup);
+    ECHO("Z");
     for (auto& parts : prods) {
         Production prod(std::move(parts.name));
         prod.products = std::move(parts.products);
