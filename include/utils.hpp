@@ -16,6 +16,13 @@
             std::cout << (#x) << "[" << std::to_string(counter++) << "] = " << elem << std::endl; \
         }\
     }
+#define TRACE_ITL(l,x) \
+    {\
+        unsigned counter = 0; \
+        for (auto& elem : (x)) { \
+            std::cout << (l) << "[" << std::to_string(counter++) << "] = " << elem << std::endl; \
+        }\
+    }
 #define ECHO(x) std::cout << (x) << std::endl
 #define ECHOI(x,limit) \
     for (unsigned i = 0; i < limit; i++) {\

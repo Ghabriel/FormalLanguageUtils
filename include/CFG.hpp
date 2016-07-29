@@ -1,3 +1,5 @@
+/* created by Ghabriel Nunes <ghabriel.nunes@gmail.com> [2016] */
+
 #ifndef CFG_HPP
 #define CFG_HPP
 
