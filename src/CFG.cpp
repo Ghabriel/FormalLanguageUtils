@@ -50,6 +50,7 @@ void CFG::clear() {
     nonTerminals.clear();
     terminals.clear();
     isFirstValid = false;
+    isFollowValid = false;
 }
 
 std::size_t CFG::size() const {
@@ -101,6 +102,84 @@ std::unordered_set<CFG::Symbol> CFG::first(const CFG::BNF& symbolSequence) const
     return result;
 }
 
+std::unordered_set<CFG::Symbol> CFG::follow(const Symbol& nonTerminal) const {
+    std::unordered_set<Symbol> result;
+    if (isTerminal(nonTerminal)) {
+        return result;
+    }
+
+    if (isFollowValid) {
+        return followSet[nonTerminal];
+    }
+
+    const std::string END_OF_STRING = "$";
+
+    followSet.clear();
+    followSet[productions[0].name].insert(END_OF_STRING);
+    std::unordered_map<Symbol, std::unordered_set<Symbol>> dependencies;
+    for (auto& prod : productions) {
+        const std::string& name = prod.name;
+        std::size_t numProducts = prod.size();
+        for (std::size_t i = 0; i < numProducts; i++) {
+            const Symbol& symbol = prod[i];
+            if (!isTerminal(symbol)) {
+                bool isNullable = true;
+                for (std::size_t j = i + 1; j < numProducts; j++) {
+                    for (auto& s : first(prod[j])) {
+                        followSet[symbol].insert(s);
+                    }
+
+                    if (!nullable(prod[j])) {
+                        isNullable = false;
+                        break;
+                    }
+                }
+                if (isNullable && symbol != name) {
+                    dependencies[symbol].insert(name);
+                }
+            }
+        }
+    }
+
+    bool stable = false;
+    while (!stable) {
+        stable = true;
+        for (auto& pair : dependencies) {
+            const Symbol& destination = pair.first;
+            std::size_t prevSize = followSet[destination].size();
+            for (const Symbol& origin : pair.second) {
+                for (const Symbol& symbol : followSet[origin]) {
+                    followSet[destination].insert(symbol);
+                }
+            }
+            if (followSet[destination].size() != prevSize) {
+                stable = false;
+            }
+        }
+    }
+
+    endableNonTerminals.clear();
+    std::unordered_set<Symbol> nonTerminals = getNonTerminals();
+    for (auto& symbol : nonTerminals) {
+        if (followSet[symbol].count(END_OF_STRING) > 0) {
+            endableNonTerminals.insert(symbol);
+            followSet[symbol].erase(END_OF_STRING);
+        }
+    }
+
+    // for (auto& pair : followSet) {
+    //     TRACE(pair.first);
+    //     TRACE_IT(pair.second);
+    //     ECHO("");
+    //     TRACE_IT(dependencies[pair.first]);
+    //     ECHO("###################################");
+    // }
+    // assert(false);
+
+    isFollowValid = true;
+    return followSet[nonTerminal];
+}
+
 bool CFG::nullable(const CFG::BNF& symbolSequence) const {
     std::vector<Symbol> symbols = toSymbolSequence(symbolSequence);
     updateFirst();
@@ -110,6 +189,14 @@ bool CFG::nullable(const CFG::BNF& symbolSequence) const {
         }
     }
     return true;
+}
+
+bool CFG::endable(const Symbol& symbol) const {
+    if (isTerminal(symbol)) {
+        return false;
+    }
+    follow(symbol);
+    return endableNonTerminals.count(symbol) > 0;
 }
 
 std::unordered_set<CFG::Symbol> CFG::range(const CFG::BNF& symbolSequence) const {
@@ -266,9 +353,10 @@ bool CFG::operator==(const CFG& other) const {
     return true;
 }
 
-void CFG::debug() const {
+CFG::BNF CFG::debug() const {
+    BNF content;
     for (auto& symbol : getNonTerminals()) {
-        BNF content = symbol + " ::= ";
+        content += symbol + " ::= ";
         bool ignore = true;
         for (std::size_t index : productionsBySymbol.at(symbol)) {
             const Production& prod = productions[index];
@@ -281,8 +369,9 @@ void CFG::debug() const {
                 content += s;
             }
         }
-        ECHO(content);
+        content += '\n';
     }
+    return content;
 }
 
 std::vector<CFG::Symbol> CFG::toSymbolSequence(const CFG::BNF& input) const {

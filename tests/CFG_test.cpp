@@ -128,36 +128,37 @@ TEST_F(TestCFG, Range) {
     ASSERT_EQ(set({"<S>", "<A>", "<B>", "<C>", "<D>"}), cfg.range("<D>"));
 }
 
-// TEST_F(TestCFG, Follow) {
-//     cfg << "<S> ::= <A><B><C>|e";
-//     cfg << "<A> ::= a<A>|";
-//     cfg << "<B> ::= b<B>|<A><C>d";
-//     cfg << "<C> ::= c<C>|";
-//     EXPECT_EQ(set(), cfg.follow("<S>"));
-//     EXPECT_EQ(set({"a", "b", "c", "d"}), cfg.follow("<A>"));
-//     EXPECT_EQ(set({"c"}), cfg.follow("<B>"));
-//     EXPECT_EQ(set({"d"}), cfg.follow("<C>"));
-//     EXPECT_TRUE(cfg.endable("<S>"));
-//     EXPECT_FALSE(cfg.endable("<A>"));
-//     EXPECT_TRUE(cfg.endable("<B>"));
-//     EXPECT_TRUE(cfg.endable("<C>"));
+TEST_F(TestCFG, Follow) {
+    cfg << "<S> ::= <A><B><C>|e";
+    cfg << "<A> ::= a<A>|";
+    cfg << "<B> ::= b<B>|<A><C>d";
+    cfg << "<C> ::= c<C>|";
+    EXPECT_EQ(set(), cfg.follow("<S>"));
+    EXPECT_EQ(set({"a", "b", "c", "d"}), cfg.follow("<A>"));
+    EXPECT_EQ(set({"c"}), cfg.follow("<B>"));
+    EXPECT_EQ(set({"d"}), cfg.follow("<C>"));
+    EXPECT_TRUE(cfg.endable("<S>"));
+    EXPECT_FALSE(cfg.endable("<A>"));
+    EXPECT_TRUE(cfg.endable("<B>"));
+    EXPECT_TRUE(cfg.endable("<C>"));
 
-//     cfg << "<E> ::= <T><E1>";
-//     cfg << "<E1> ::= +<T><E1>|";
-//     cfg << "<T> ::= <F><T1>";
-//     cfg << "<T1> ::= *<F><T1>|";
-//     cfg << "<F> ::= (<E>)|i";
-//     EXPECT_EQ(set({")"}), cfg.follow("<E>"));
-//     EXPECT_EQ(set({")"}), cfg.follow("<E1>"));
-//     EXPECT_EQ(set({")", "+"}), cfg.follow("<T>"));
-//     EXPECT_EQ(set({")", "+"}), cfg.follow("<T1>"));
-//     EXPECT_EQ(set({")", "+", "*"}), cfg.follow("<F>"));
-//     EXPECT_TRUE(cfg.endable("<E>"));
-//     EXPECT_TRUE(cfg.endable("<E1>"));
-//     EXPECT_TRUE(cfg.endable("<T>"));
-//     EXPECT_TRUE(cfg.endable("<T1>"));
-//     EXPECT_TRUE(cfg.endable("<F>"));
-// }
+    cfg.clear();
+    cfg << "<E> ::= <T><E1>";
+    cfg << "<E1> ::= +<T><E1>|";
+    cfg << "<T> ::= <F><T1>";
+    cfg << "<T1> ::= *<F><T1>|";
+    cfg << "<F> ::= (<E>)|i";
+    EXPECT_EQ(set({")"}), cfg.follow("<E>"));
+    EXPECT_EQ(set({")"}), cfg.follow("<E1>"));
+    EXPECT_EQ(set({")", "+"}), cfg.follow("<T>"));
+    EXPECT_EQ(set({")", "+"}), cfg.follow("<T1>"));
+    EXPECT_EQ(set({")", "+", "*"}), cfg.follow("<F>"));
+    EXPECT_TRUE(cfg.endable("<E>"));
+    EXPECT_TRUE(cfg.endable("<E1>"));
+    EXPECT_TRUE(cfg.endable("<T>"));
+    EXPECT_TRUE(cfg.endable("<T1>"));
+    EXPECT_TRUE(cfg.endable("<F>"));
+}
 
 TEST_F(TestCFG, Recursion) {
     cfg << "<S> ::= a<S>b|";

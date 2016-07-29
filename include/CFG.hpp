@@ -61,9 +61,18 @@ public:
     // Complexity: O(s + L) on first call, O(L) on subsequent calls
     std::unordered_set<Symbol> first(const BNF&) const;
 
+    // Returns the follow set of a given non-terminal.
+    // The first call is slower due to multiple follow set calculations,
+    // but subsequent calls are faster due to caching, until invalidated.
+    std::unordered_set<Symbol> follow(const Symbol&) const;
+
     // Checks if a sequence of symbols is able to derive the empty string.
     // Complexity: O(s + L) on first call, O(L) on subsequent calls
     bool nullable(const BNF&) const;
+
+    // Checks if a given non-terminal is endable, i.e, can be the
+    // last symbol of a derivation sequence. Returns false for terminals.
+    bool endable(const Symbol&) const;
 
     // Returns the set of non-terminals that are left-reachable
     // by a given sequence of symbols.
@@ -88,9 +97,14 @@ public:
 
     CFG withoutRecursion() const;
 
+    // Checks if two CFGs are equal. Note that, since CFG equivalence
+    // is undecidable, this implementation considers two CFGs equal
+    // if and only if they have exactly the same productions.
+    // Complexity: O(s1 + s2)
     bool operator==(const CFG&) const;
 
-    void debug() const;
+    // Returns a BNF representation of this CFG.
+    BNF debug() const;
 
 private:
     class Production {
@@ -110,7 +124,6 @@ private:
         std::string name;
         std::vector<Symbol> products;
         mutable std::unordered_set<Symbol> firstSet;
-        // mutable std::unordered_set<Symbol> followSet;
         mutable bool nullable;
     };
     std::vector<Production> productions;
@@ -118,7 +131,10 @@ private:
     std::unordered_set<Symbol> nonTerminals;
     std::unordered_set<Symbol> terminals;
     mutable bool isFirstValid = false;
+    mutable bool isFollowValid = false;
     mutable std::unordered_map<Symbol, bool> nullabilityBySymbol;
+    mutable std::unordered_map<Symbol, std::unordered_set<Symbol>> followSet;
+    mutable std::unordered_set<Symbol> endableNonTerminals;
 
     // Converts a BNF string to a sequence of symbols.
     // Complexity: O(L)
