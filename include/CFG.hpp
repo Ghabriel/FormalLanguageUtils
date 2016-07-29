@@ -3,10 +3,12 @@
 #ifndef CFG_HPP
 #define CFG_HPP
 
+#include <functional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "utils.hpp"
+
+class CFGRepresentation;
 
 /*
  * A class that represents a Context-Free Grammar.
@@ -19,6 +21,9 @@
  * performance. Some of these cached structures are invalidated when
  * a new production is added to the CFG, although it doesn't necessarily
  * happen.
+ *
+ * The Strategy Pattern is used to decouple the grammar representation
+ * from the functionality provided by this class.
  */
 class CFG {
 public:
@@ -30,6 +35,8 @@ public:
         DIRECT,
         INDIRECT
     };
+
+    CFG(const CFGRepresentation& = defaultRepresentation.get());
 
     // Adds production(s) to this CFG, returning itself to allow chaining.
     template<typename... Args>
@@ -137,6 +144,8 @@ private:
         mutable std::unordered_set<Symbol> firstSet;
         mutable bool nullable;
     };
+
+    const CFGRepresentation& representation;
     std::vector<Production> productions;
     std::unordered_map<Symbol, std::vector<std::size_t>> productionsBySymbol;
     std::unordered_set<Symbol> nonTerminals;
@@ -147,13 +156,17 @@ private:
     mutable std::unordered_map<Symbol, std::unordered_set<Symbol>> followSet;
     mutable std::unordered_set<Symbol> endableNonTerminals;
 
-    // Converts a BNF string to a sequence of symbols.
-    // Complexity: O(L)
-    std::vector<Symbol> toSymbolSequence(const BNF&) const;
+    static std::reference_wrapper<const CFGRepresentation> defaultRepresentation;
+    static void setDefaultRepresentation(const CFGRepresentation&);
 
-    // Checks if a symbol corresponds to a terminal.
-    // Complexity: O(1)
+    CFG& internalAdd(const Production&);
+
+    // Utility methods that map to the representation scheme methods.
+    std::vector<Symbol> toSymbolSequence(const BNF&) const;
     bool isTerminal(const Symbol&) const;
+    bool isNonTerminal(const Symbol&) const;
+    std::string toReadableForm(const Production&) const;
+    std::string name(const Symbol&) const;
 
     // Executes a callback for all productions of a given symbol.
     // Complexity: O(f), where f is the complexity of the callback.
@@ -182,14 +195,6 @@ private:
     // Invalidates all cached structures.
     // Complexity: O(1)
     void invalidate();
-
-    // Returns a BNF representation of a production.
-    // Complexity: O(p)
-    std::string toBNF(const Production&) const;
-
-    // Returns the name of a symbol.
-    // Complexity: O(1) if it's a terminal, otherwise O(length of name)
-    std::string name(const Symbol&) const;
 };
 
 template<typename... Args>

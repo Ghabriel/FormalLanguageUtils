@@ -2,43 +2,53 @@
 
 #include <cassert>
 #include <queue>
-#include <regex>
+#include <memory>
 #include "CFG.hpp"
+#include "CFGRepresentation.hpp"
+#include "SimplifiedBNF.hpp"
 
-CFG& CFG::add(const Symbol& name, const BNF& production) {
-    assert(!isTerminal(name));
-    Production prod(name);
-    prod.products = toSymbolSequence(production);
-    for (Symbol& symbol : prod.products) {
+namespace {
+    std::unique_ptr<const CFGRepresentation> initialDefRepresentation(new SimplifiedBNF());
+}
+
+std::reference_wrapper<const CFGRepresentation> CFG::defaultRepresentation(*initialDefRepresentation);
+
+void CFG::setDefaultRepresentation(const CFGRepresentation& rep) {
+    defaultRepresentation = rep;
+}
+
+CFG::CFG(const CFGRepresentation& rep) : representation(rep) {}
+
+CFG& CFG::internalAdd(const CFG::Production& prod) {
+    for (const Symbol& symbol : prod.products) {
         if (isTerminal(symbol)) {
             terminals.insert(symbol);
         } else {
             nonTerminals.insert(symbol);
         }
     }
-    nonTerminals.insert(name);
-    productionsBySymbol[name].push_back(size());
+    nonTerminals.insert(prod.name);
+    productionsBySymbol[prod.name].push_back(size());
     productions.push_back(std::move(prod));
     invalidate();
     return *this;
 }
 
+CFG& CFG::add(const Symbol& name, const BNF& rhs) {
+    assert(isNonTerminal(name));
+    auto parts = representation.decompose(name, rhs);
+    Production prod(std::move(parts.name));
+    prod.products = std::move(parts.products);
+    return internalAdd(prod);
+}
+
 CFG& CFG::add(const CFG::BNF& prodGroup) {
-    const static std::regex valid("(<[A-Za-z0-9_']+>) ?::= ?(.*)");
-    std::smatch matches;
-    std::regex_match(prodGroup, matches, valid);
-    assert(matches.size() > 0);
-    std::string buffer;
-    std::string productions = matches[2];
-    for (char c : productions) {
-        if (c == '|') {
-            add(matches[1], buffer);
-            buffer.clear();
-        } else {
-            buffer += c;
-        }
+    auto prods = representation.decompose(prodGroup);
+    for (auto& parts : prods) {
+        Production prod(std::move(parts.name));
+        prod.products = std::move(parts.products);
+        internalAdd(prod);
     }
-    add(matches[1], buffer);
     return *this;
 }
 
@@ -297,7 +307,7 @@ CFG::ReferenceType CFG::nonFactoringType(const CFG::Symbol& symbol) const {
 }
 
 CFG CFG::withoutRecursion() const {
-    CFG result;
+    CFG result(representation);
     auto nonTerminals = getNonTerminals();
     // unsigned counter = 0;
     for (auto& nonTerminal : nonTerminals) {
@@ -305,7 +315,7 @@ CFG CFG::withoutRecursion() const {
         if (recType == ReferenceType::NONE) {
             for (std::size_t index : productionsBySymbol.at(nonTerminal)) {
                 const Production& prod = productions[index];
-                result << toBNF(prod);
+                result << toReadableForm(prod);
             }
             continue;
         }
@@ -347,11 +357,11 @@ bool CFG::operator==(const CFG& other) const {
     }
     std::unordered_set<BNF> productionList;
     for (auto& production : productions) {
-        productionList.insert(toBNF(production));
+        productionList.insert(toReadableForm(production));
     }
 
     for (auto& production : other.productions) {
-        if (productionList.count(toBNF(production)) == 0) {
+        if (productionList.count(toReadableForm(production)) == 0) {
             return false;
         }
     }
@@ -380,26 +390,23 @@ CFG::BNF CFG::debug() const {
 }
 
 std::vector<CFG::Symbol> CFG::toSymbolSequence(const CFG::BNF& input) const {
-    std::vector<Symbol> result;
-    std::string buffer;
-    bool record = false;
-    for (char c : input) {
-        if (c == '<') {
-            record = true;
-        } else if (c == '>') {
-            record = false;
-        }
-        buffer += c;
-        if (!record) {
-            result.push_back(buffer);
-            buffer.clear();
-        }
-    }
-    return result;
+    return representation.toSymbolSequence(input);
 }
 
 bool CFG::isTerminal(const CFG::Symbol& symbol) const {
-    return symbol[0] != '<';
+    return representation.isTerminal(symbol);
+}
+
+bool CFG::isNonTerminal(const CFG::Symbol& symbol) const {
+    return representation.isNonTerminal(symbol);
+}
+
+std::string CFG::toReadableForm(const Production& prod) const {
+    return representation.toReadableForm(prod.name, prod.products);
+}
+
+std::string CFG::name(const CFG::Symbol& symbol) const {
+    return representation.name(symbol);
 }
 
 void CFG::select(const CFG::Symbol& symbol,
@@ -443,10 +450,10 @@ void CFG::updateFirst() const {
             return;
         }
         visited.insert(index);
-        // ECHO(toBNF(prod));
+        // ECHO(toReadableForm(prod));
         for (auto& symbol : prod.products) {
             if (isTerminal(symbol)) {
-                // ECHOI(symbol + " -> FIRST(" + toBNF(prod) + ")", 1);
+                // ECHOI(symbol + " -> FIRST(" + toReadableForm(prod) + ")", 1);
                 push(prod, symbol);
                 return;
             }
@@ -460,7 +467,7 @@ void CFG::updateFirst() const {
             // ECHO("----");
 
             for (auto& s : firstTable[symbol]) {
-                // ECHOI(s + " -> FIRST(" + toBNF(prod) + ")", 1);
+                // ECHOI(s + " -> FIRST(" + toReadableForm(prod) + ")", 1);
                 push(prod, s);
             }
 
@@ -485,7 +492,7 @@ void CFG::updateFirst() const {
     // ECHO("#######################################");
     // ECHO("#######################################");
     // for (auto& prod : productions) {
-    //     ECHO(toBNF(prod));
+    //     ECHO(toReadableForm(prod));
     //     TRACE(prod.nullable);
     //     TRACE_IT(prod.firstSet);
     //     ECHO("");
@@ -523,7 +530,7 @@ void CFG::updateNullability(std::size_t index, std::unordered_set<std::size_t>& 
     prod.nullable = false;
     bool allNullable = true;
     // Tries to find the answer without recursion
-    // ECHO("[START] " + toBNF(prod));
+    // ECHO("[START] " + toReadableForm(prod));
     for (auto& symbol : prod.products) {
         // TRACE_L("\tsymbol", symbol);
         if (isTerminal(symbol)) {
@@ -610,19 +617,4 @@ bool CFG::populateRangeBySymbol(const Symbol& symbol, std::unordered_set<CFG::Sy
 void CFG::invalidate() {
     isFirstValid = false;
     isFollowValid = false;
-}
-
-std::string CFG::toBNF(const Production& prod) const {
-    std::string result = prod.name + " ::= ";
-    for (auto& symbol : prod.products) {
-        result += symbol;
-    }
-    return result;
-}
-
-std::string CFG::name(const CFG::Symbol& symbol) const {
-    if (isTerminal(symbol)) {
-        return symbol;
-    }
-    return symbol.substr(1, symbol.size() - 2);
 }

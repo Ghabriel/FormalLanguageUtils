@@ -4,56 +4,76 @@
 #define SIMPLIFIED_BNF_HPP
 
 #include <regex>
+#include "CFGRepresentation.hpp"
+#include "utils.hpp"
 
 class SimplifiedBNF : public CFGRepresentation {
 public:
-	bool isTerminal(const std::string& symbol) const override {
-	    return symbol[0] != '<';
-	}
+    using CFGRepresentation::decompose;
 
-	bool isNonTerminal(const std::string& symbol) const override {
-		return symbol.front() == '<' && symbol.back() == '>';
-	}
+    bool isTerminal(const std::string& symbol) const override {
+        return symbol[0] != '<';
+    }
 
-	std::vector<ProductionParts> decompose(const std::string& group) const override {
-	    const static std::regex valid("(<[A-Za-z0-9_']+>) ?::= ?(.*)");
-	    std::smatch matches;
-	    std::regex_match(group, matches, valid);
-	    assert(matches.size() > 0);
-	    std::string buffer;
-	    std::string productions = matches[2];
-	    std::vector<ProductionParts> result;
-	    for (char c : productions) {
-	        if (c == '|') {
-	            add(result, matches[1], buffer);
-	            buffer.clear();
-	        } else {
-	            buffer += c;
-	        }
-	    }
-	    add(result, matches[1], buffer);
-	    return result;
-	}
+    bool isNonTerminal(const std::string& symbol) const override {
+        return symbol.front() == '<' && symbol.back() == '>';
+    }
 
-	std::string toReadableForm(const std::string& name,
-		const std::vector<std::string>& products) const override {
+    std::vector<ProductionParts> decompose(const std::string& group) const override {
+        const static std::regex valid("(<[A-Za-z0-9_']+>) ?::= ?(.*)");
+        std::smatch matches;
+        std::regex_match(group, matches, valid);
+        assert(matches.size() > 0);
+        std::string buffer;
+        std::string productions = matches[2];
+        std::vector<ProductionParts> result;
+        for (char c : productions) {
+            if (c == '|') {
+                result.push_back(decompose(matches[1], buffer));
+                buffer.clear();
+            } else {
+                buffer += c;
+            }
+        }
+        result.push_back(decompose(matches[1], buffer));
+        return result;
+    }
 
-	    std::string result = name + " ::= ";
-	    for (auto& symbol : products) {
-	        result += symbol;
-	    }
-	    return result;
-	}
+    std::vector<std::string> toSymbolSequence(const std::string& input) const override {
+        std::vector<std::string> result;
+        std::string buffer;
+        bool record = false;
+        for (char c : input) {
+            if (c == '<') {
+                record = true;
+            } else if (c == '>') {
+                record = false;
+            }
+            buffer += c;
+            if (!record) {
+                result.push_back(buffer);
+                buffer.clear();
+            }
+        }
+        return result;
+    }
 
-private:
-	void add(std::vector<ProductionParts>& result,
-		const std::string& name, const std::string& buffer) const {
+    std::string toReadableForm(const std::string& name,
+        const std::vector<std::string>& products) const override {
 
-		ProductionParts production;
-		production.name = name;
-		production.products = toSymbolSequence(buffer);
-		result.push_back(std::move(production));
-	}
+        std::string result = name + " ::= ";
+        for (auto& symbol : products) {
+            result += symbol;
+        }
+        return result;
+    }
+
+    std::string name(const std::string& symbol) const {
+        if (isTerminal(symbol)) {
+            return symbol;
+        }
+        return symbol.substr(1, symbol.size() - 2);
+    }
 };
 
 #endif
