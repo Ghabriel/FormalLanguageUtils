@@ -2,22 +2,14 @@
 
 #include <cassert>
 #include <queue>
-#include <memory>
+#include <type_traits>
 #include "CFG.hpp"
 #include "CFGRepresentation.hpp"
 #include "SimplifiedBNF.hpp"
 
-namespace {
-    std::unique_ptr<const CFGRepresentation> initialDefRepresentation(new SimplifiedBNF());
-}
+std::shared_ptr<const CFGRepresentation> CFG::defaultRepresentation(new SimplifiedBNF());
 
-std::reference_wrapper<const CFGRepresentation> CFG::defaultRepresentation(*initialDefRepresentation);
-
-void CFG::setDefaultRepresentation(const CFGRepresentation& rep) {
-    defaultRepresentation = rep;
-}
-
-CFG::CFG(const CFGRepresentation& rep) : representation(rep) {}
+CFG::CFG() : representation(defaultRepresentation) {}
 
 CFG& CFG::internalAdd(const CFG::Production& prod) {
     for (const Symbol& symbol : prod.products) {
@@ -36,18 +28,14 @@ CFG& CFG::internalAdd(const CFG::Production& prod) {
 
 CFG& CFG::add(const Symbol& name, const BNF& rhs) {
     assert(isNonTerminal(name));
-    auto parts = representation.decompose(name, rhs);
+    auto parts = getRepresentation().decompose(name, rhs);
     Production prod(std::move(parts.name));
     prod.products = std::move(parts.products);
     return internalAdd(prod);
 }
 
 CFG& CFG::add(const CFG::BNF& prodGroup) {
-    TRACE(prodGroup);
-    TRACE(&representation);
-    ECHO("BEFORE");
-    auto prods = representation.decompose(prodGroup);
-    ECHO("Z");
+    auto prods = getRepresentation().decompose(prodGroup);
     for (auto& parts : prods) {
         Production prod(std::move(parts.name));
         prod.products = std::move(parts.products);
@@ -311,7 +299,7 @@ CFG::ReferenceType CFG::nonFactoringType(const CFG::Symbol& symbol) const {
 }
 
 CFG CFG::withoutRecursion() const {
-    CFG result(representation);
+    auto result = CFG::create(representation);
     auto nonTerminals = getNonTerminals();
     // unsigned counter = 0;
     for (auto& nonTerminal : nonTerminals) {
@@ -394,23 +382,23 @@ CFG::BNF CFG::debug() const {
 }
 
 std::vector<CFG::Symbol> CFG::toSymbolSequence(const CFG::BNF& input) const {
-    return representation.toSymbolSequence(input);
+    return getRepresentation().toSymbolSequence(input);
 }
 
 bool CFG::isTerminal(const CFG::Symbol& symbol) const {
-    return representation.isTerminal(symbol);
+    return getRepresentation().isTerminal(symbol);
 }
 
 bool CFG::isNonTerminal(const CFG::Symbol& symbol) const {
-    return representation.isNonTerminal(symbol);
+    return getRepresentation().isNonTerminal(symbol);
 }
 
 std::string CFG::toReadableForm(const Production& prod) const {
-    return representation.toReadableForm(prod.name, prod.products);
+    return getRepresentation().toReadableForm(prod.name, prod.products);
 }
 
 std::string CFG::name(const CFG::Symbol& symbol) const {
-    return representation.name(symbol);
+    return getRepresentation().name(symbol);
 }
 
 void CFG::select(const CFG::Symbol& symbol,
@@ -621,4 +609,8 @@ bool CFG::populateRangeBySymbol(const Symbol& symbol, std::unordered_set<CFG::Sy
 void CFG::invalidate() {
     isFirstValid = false;
     isFollowValid = false;
+}
+
+const CFGRepresentation& CFG::getRepresentation() const {
+    return *representation;
 }

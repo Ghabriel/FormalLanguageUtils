@@ -20,7 +20,6 @@ public:
     }
 
     std::vector<ProductionParts> decompose(const std::string& group) const override {
-        ECHO("A");
         const static std::regex valid("([A-Z][^ ]*) ?-> ?(.*)");
         std::smatch matches;
         std::regex_match(group, matches, valid);

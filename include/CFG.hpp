@@ -4,6 +4,7 @@
 #define CFG_HPP
 
 #include <functional>
+#include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -23,7 +24,8 @@ class CFGRepresentation;
  * happen.
  *
  * The Strategy Pattern is used to decouple the grammar representation
- * from the functionality provided by this class.
+ * from the functionality provided by this class. A static factory method
+ * is used to allow such custom representations.
  */
 class CFG {
 public:
@@ -36,7 +38,13 @@ public:
         INDIRECT
     };
 
-    CFG(const CFGRepresentation& = defaultRepresentation.get());
+    CFG();
+
+    template<typename T>
+    static CFG create(const T& = *defaultRepresentation);
+
+    template<typename T>
+    static CFG create(const std::shared_ptr<T>&);
 
     // Adds production(s) to this CFG, returning itself to allow chaining.
     template<typename... Args>
@@ -145,7 +153,6 @@ private:
         mutable bool nullable;
     };
 
-    const CFGRepresentation& representation;
     std::vector<Production> productions;
     std::unordered_map<Symbol, std::vector<std::size_t>> productionsBySymbol;
     std::unordered_set<Symbol> nonTerminals;
@@ -156,8 +163,14 @@ private:
     mutable std::unordered_map<Symbol, std::unordered_set<Symbol>> followSet;
     mutable std::unordered_set<Symbol> endableNonTerminals;
 
-    static std::reference_wrapper<const CFGRepresentation> defaultRepresentation;
-    static void setDefaultRepresentation(const CFGRepresentation&);
+    std::shared_ptr<const CFGRepresentation> representation;
+    static std::shared_ptr<const CFGRepresentation> defaultRepresentation;
+    template<typename T>
+    static void setDefaultRepresentation(const T&) {
+        defaultRepresentation.reset(new T());
+    }
+
+    const CFGRepresentation& getRepresentation() const;
 
     CFG& internalAdd(const Production&);
 
@@ -196,6 +209,20 @@ private:
     // Complexity: O(1)
     void invalidate();
 };
+
+template<typename T>
+CFG CFG::create(const T&) {
+    CFG instance;
+    instance.representation.reset(new T());
+    return instance;
+}
+
+template<typename T>
+CFG CFG::create(const std::shared_ptr<T>& ptr) {
+    CFG instance;
+    instance.representation = ptr;
+    return instance;
+}
 
 template<typename... Args>
 CFG& CFG::add(const Symbol& name, const BNF& production, Args... args) {
