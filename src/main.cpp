@@ -13,5 +13,11 @@ int main(int, char**) {
     cfg << "<T1> ::= *<F><T1>|";
     cfg << "<F> ::= (<E>)|i";
     parser::LL1 parser(cfg);
-    TRACE(parser.canParse());
+    ParseResults results = parser.parse({"i", "+", "i", "*", "*", "i"});
+    if (results.accepted) {
+        ECHO("OK");
+    } else {
+        // TRACE(results.errorIndex);
+        ECHO(results.errorMessage);
+    }
 }

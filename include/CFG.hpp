@@ -176,6 +176,11 @@ public:
     // Complexity: O(1)
     const Production& operator[](std::size_t) const;
 
+    // Utility methods that map to the representation scheme methods.
+    bool isTerminal(const Symbol&) const;
+    bool isNonTerminal(const Symbol&) const;
+    std::string toReadableForm(const Production&) const;
+
     // Returns a BNF representation of this CFG.
     // Complexity: O(s)
     BNF debug() const;
@@ -204,9 +209,6 @@ private:
 
     // Utility methods that map to the representation scheme methods.
     std::vector<Symbol> toSymbolSequence(const BNF&) const;
-    bool isTerminal(const Symbol&) const;
-    bool isNonTerminal(const Symbol&) const;
-    std::string toReadableForm(const Production&) const;
     std::string name(const Symbol&) const;
 
     // Executes a callback for all productions of a given symbol.

@@ -4,6 +4,7 @@
 #define PARSER_HPP
 
 #include <string>
+#include <vector>
 #include "CFG.hpp"
 
 struct ParseResults {
@@ -14,12 +15,13 @@ struct ParseResults {
 
 class Parser {
 public:
+    using Symbol = std::string;
     Parser(const CFG& cfg) : cfg(cfg) {}
     const CFG& getCFG() const {
         return cfg;
     }
 
-    virtual ParseResults parse(const std::string&) = 0;
+    virtual ParseResults parse(const std::vector<Symbol>&) = 0;
     virtual bool canParse() const = 0;
 
 private:

@@ -3,6 +3,7 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
+#include <cstdio>
 #include <functional>
 #include <iostream>
 #include <unordered_map>
@@ -111,6 +112,31 @@ namespace utils {
         std::unordered_map<K1, T2> ltr;
         std::unordered_map<K2, T1> rtl;
     };
+
+    template<typename T>
+    class reverse_iterator {
+    public:
+        reverse_iterator(const T& value) : value(value) {};
+        auto begin() { return value.rbegin(); }
+        auto begin() const { return value.rbegin(); }
+        auto end() { return value.rend(); }
+        auto end() const { return value.rend(); }
+
+    private:
+        const T& value;
+    };
+
+    template<typename T>
+    reverse_iterator<T> make_reverse(const T& iterable) {
+        return iterable;
+    }
+
+    template<typename... Args>
+    std::string format(const std::string& base, Args&&... args) {
+        char* container;
+        sprintf(container, base.c_str(), args...);
+        return container;
+    }
 }
 
 // namespace std {
