@@ -3,11 +3,15 @@
 #include <iostream>
 #include "CFG.hpp"
 #include "DFA.hpp"
-
-std::ostream& operator<<(std::ostream& stream, const State& state) {
-    return stream << state.getName();
-}
+#include "parsers/LL1.hpp"
 
 int main(int, char**) {
-    ECHO("main");
+    CFG cfg;
+    cfg << "<E> ::= <T><E1>";
+    cfg << "<E1> ::= +<T><E1>|";
+    cfg << "<T> ::= <F><T1>";
+    cfg << "<T1> ::= *<F><T1>|";
+    cfg << "<F> ::= (<E>)|i";
+    parser::LL1 parser(cfg);
+    TRACE(parser.canParse());
 }

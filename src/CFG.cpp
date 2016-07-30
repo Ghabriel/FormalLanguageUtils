@@ -3,14 +3,14 @@
 #include <cassert>
 #include <queue>
 #include "CFG.hpp"
-#include "CFGRepresentation.hpp"
-#include "SimplifiedBNF.hpp"
+#include "representations/CFGRepresentation.hpp"
+#include "representations/SimplifiedBNF.hpp"
 
 std::shared_ptr<const CFGRepresentation> CFG::defaultRepresentation(new SimplifiedBNF());
 
 CFG::CFG() : representation(defaultRepresentation) {}
 
-CFG& CFG::internalAdd(const CFG::Production& prod) {
+CFG& CFG::internalAdd(const Production& prod) {
     for (const Symbol& symbol : prod.products) {
         if (isTerminal(symbol)) {
             terminals.insert(symbol);
@@ -81,6 +81,10 @@ bool CFG::isConsistent() const {
         }
     }
     return true;
+}
+
+void CFG::prepareFirst() const {
+    updateFirst();
 }
 
 std::unordered_set<CFG::Symbol> CFG::first(const CFG::BNF& symbolSequence) const {
@@ -359,6 +363,11 @@ bool CFG::operator==(const CFG& other) const {
     return true;
 }
 
+const Production& CFG::operator[](std::size_t index) const {
+    assert(index < size());
+    return productions[index];
+}
+
 CFG::BNF CFG::debug() const {
     BNF content;
     for (auto& symbol : getNonTerminals()) {
@@ -401,7 +410,7 @@ std::string CFG::name(const CFG::Symbol& symbol) const {
 }
 
 void CFG::select(const CFG::Symbol& symbol,
-    const std::function<void(const CFG::Production&)>& callback) const {
+    const std::function<void(const Production&)>& callback) const {
     if (!isTerminal(symbol)) {
         for (auto index : productionsBySymbol.at(symbol)) {
             callback(productions[index]);

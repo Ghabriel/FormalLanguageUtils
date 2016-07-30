@@ -10,6 +10,46 @@
 #include <vector>
 
 class CFGRepresentation;
+class CFG;
+
+class Production {
+    friend class CFG;
+public:
+    using Symbol = std::string;
+    explicit Production(const std::string& name) : name(name) {}
+    std::string getName() const {
+        return name;
+    }
+
+    const std::vector<Symbol>& getProducts() const {
+        return products;
+    }
+
+    const std::unordered_set<Symbol>& getFirstSet() const {
+        return firstSet;
+    }
+
+    bool isNullable() const {
+        return nullable;
+    }
+
+    std::size_t size() const {
+        return products.size();
+    }
+
+    const Symbol& operator[](std::size_t index) const {
+        return products[index];
+    }
+
+    Symbol& operator[](std::size_t index) {
+        return products[index];
+    }
+private:
+    std::string name;
+    std::vector<Symbol> products;
+    mutable std::unordered_set<Symbol> firstSet;
+    mutable bool nullable;
+};
 
 /*
  * A class that represents a Context-Free Grammar.
@@ -73,6 +113,10 @@ public:
     // Complexity: O(s)
     bool isConsistent() const;
 
+    // Prepares the first set of all productions.
+    // Complexity: O(s) on first call, O(1) on subsequent calls
+    void prepareFirst() const;
+
     // Returns the first set of a sequence of symbols.
     // The first call is slower due to multiple first set calculations,
     // but subsequent calls are faster due to caching, until invalidated.
@@ -128,31 +172,15 @@ public:
     // Complexity: O(s1 + s2)
     bool operator==(const CFG&) const;
 
+    // Returns a production, given its index.
+    // Complexity: O(1)
+    const Production& operator[](std::size_t) const;
+
     // Returns a BNF representation of this CFG.
     // Complexity: O(s)
     BNF debug() const;
 
 private:
-    class Production {
-        friend class CFG;
-    public:
-        explicit Production(const std::string& name) : name(name) {}
-        std::size_t size() const {
-            return products.size();
-        }
-        const Symbol& operator[](std::size_t index) const {
-            return products[index];
-        }
-        Symbol& operator[](std::size_t index) {
-            return products[index];
-        }
-    private:
-        std::string name;
-        std::vector<Symbol> products;
-        mutable std::unordered_set<Symbol> firstSet;
-        mutable bool nullable;
-    };
-
     std::vector<Production> productions;
     std::unordered_map<Symbol, std::vector<std::size_t>> productionsBySymbol;
     std::unordered_set<Symbol> nonTerminals;

@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 #include "CFG.hpp"
-#include "DidacticNotation.hpp"
+#include "representations/DidacticNotation.hpp"
 
 using set = std::unordered_set<std::string>;
 
