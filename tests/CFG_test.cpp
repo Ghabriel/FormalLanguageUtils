@@ -252,6 +252,43 @@ TEST_F(TestCFG, RepresentationExchange) {
     ASSERT_TRUE(test.nullable("D"));
 }
 
+TEST_F(TestCFG, Copy) {
+    cfg << "<S> ::= <S>s|<B><C><D>";
+    cfg << "<A> ::= <S><A>a|";
+    cfg << "<B> ::= <C>c";
+    cfg << "<C> ::= <B>b|<S>s|<A>";
+    cfg << "<D> ::= <D>d|<D><B>|";
+    CFG copy = cfg;
+    ASSERT_EQ(set({"c"}), copy.first("<S>"));
+    ASSERT_EQ(set({"c"}), copy.first("<A>"));
+    ASSERT_EQ(set({"c"}), copy.first("<B>"));
+    ASSERT_EQ(set({"c"}), copy.first("<C>"));
+    ASSERT_EQ(set({"c", "d"}), copy.first("<D>"));
+    ASSERT_FALSE(copy.nullable("<S>"));
+    ASSERT_TRUE(copy.nullable("<A>"));
+    ASSERT_FALSE(copy.nullable("<B>"));
+    ASSERT_TRUE(copy.nullable("<C>"));
+    ASSERT_TRUE(copy.nullable("<D>"));
+
+    auto test = CFG::create(DidacticNotation());
+    test << "S -> S s | B C D";
+    test << "A -> S A a | ";
+    test << "B -> C c";
+    test << "C -> B b | S s | A";
+    test << "D -> D d | D B | ";
+    CFG testCopy = test;
+    ASSERT_EQ(set({"c"}), testCopy.first("S"));
+    ASSERT_EQ(set({"c"}), testCopy.first("A"));
+    ASSERT_EQ(set({"c"}), testCopy.first("B"));
+    ASSERT_EQ(set({"c"}), testCopy.first("C"));
+    ASSERT_EQ(set({"c", "d"}), testCopy.first("D"));
+    ASSERT_FALSE(testCopy.nullable("S"));
+    ASSERT_TRUE(testCopy.nullable("A"));
+    ASSERT_FALSE(testCopy.nullable("B"));
+    ASSERT_TRUE(testCopy.nullable("C"));
+    ASSERT_TRUE(testCopy.nullable("D"));
+}
+
 // TEST_F(TestCFG, FactorizationElimination) {
 //     cfg << "<S> ::= a<S>b|ac";
 //     CFG expected;

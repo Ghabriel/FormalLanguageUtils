@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <queue>
-#include <type_traits>
 #include "CFG.hpp"
 #include "CFGRepresentation.hpp"
 #include "SimplifiedBNF.hpp"
