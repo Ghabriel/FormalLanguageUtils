@@ -8,7 +8,7 @@ protected:
     Lexer lexer;
 };
 
-// TEST_F(TestRG, Test1) {
+// TEST_F(TestLexer, Test1) {
 //     lexer.add("NUMBER", "[0-9]+\\.?[0-9]*|\\.[0-9]+");
 //     lexer.add("ASSIGNMENT", "=");
 //     lexer.add("IDENTIFIER", "[A-Za-z_]+[A-Za-z0-9_]*");

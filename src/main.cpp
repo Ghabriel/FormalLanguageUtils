@@ -6,9 +6,12 @@
 #include "Lexer.hpp"
 #include "parsers/LL1.hpp"
 #include "representations/DidacticNotation.hpp"
-#include <regex>
+#include "Regex.hpp"
 
 int main(int, char**) {
+    Regex regex("ab+c");
+    TRACE(regex.matches("abbc"));
+
     // Lexer lexer;
     // lexer.addToken("T_NUMBER", "[0-9]+\\.?[0-9]*|\\.[0-9]+");
     // lexer.addToken("T_PLUS", "\\+");
