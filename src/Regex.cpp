@@ -186,23 +186,23 @@ std::size_t Regex::State::read(char c) const {
     for (auto& pair : transitions) {
         bool ok = false;
         if (pair.first[0] == '[') {
-            std::vector<std::pair<char, char>> intervals;
             char buffer = '\0';
             bool validBuffer = false;
-            char intervalBuffer;
             bool intervalMode = false;
             std::size_t length = pair.first.size();
             for (std::size_t i = 1; i < length - 1; i++) {
                 char s = pair.first[i];
                 if (s == '-' && validBuffer) {
-                    intervalBuffer = buffer;
                     validBuffer = false;
                     intervalMode = true;
                     continue;
                 }
 
                 if (intervalMode) {
-                    intervals.push_back(std::make_pair(intervalBuffer, s));
+                    if (buffer <= c && c <= s) {
+                        ok = true;
+                        break;
+                    }
                     intervalMode = false;
                     continue;
                 }
@@ -227,15 +227,6 @@ std::size_t Regex::State::read(char c) const {
 
             if (validBuffer && c == buffer) {
                 ok = true;
-            }
-
-            if (!ok) {
-                for (auto& p : intervals) {
-                    if (p.first <= c && c <= p.second) {
-                        ok = true;
-                        break;
-                    }
-                }
             }
         } else if (c == pair.first[0]) {
             ok = true;
