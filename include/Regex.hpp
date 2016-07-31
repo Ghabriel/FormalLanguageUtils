@@ -3,6 +3,7 @@
 #ifndef REGEX_HPP
 #define REGEX_HPP
 
+#include <climits>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -23,16 +24,17 @@ private:
     using Pattern = std::string;
     struct State {
         State() {}
-        explicit State(Regex* inner) : inner(inner) {}
         std::size_t read(char) const;
         std::unordered_map<Pattern, std::size_t> transitions;
         std::unordered_set<std::size_t> spontaneous;
-        std::unique_ptr<Regex> inner;
     };
     struct Composition {
         Pattern pattern;
         char modifier = ' ';
         std::vector<Composition> inner;
+        std::size_t ref = INT_MAX;
+        bool isProtected = false;
+        char groupModifier =  ' ';
     };
 
     std::string expression;

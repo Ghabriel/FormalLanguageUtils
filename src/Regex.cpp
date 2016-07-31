@@ -1,6 +1,6 @@
 /* created by Ghabriel Nunes <ghabriel.nunes@gmail.com> [2016] */
 #include <cassert>
-#include <climits>
+#include <stack>
 #include <queue>
 #include "Regex.hpp"
 #include "utils.hpp"
@@ -23,17 +23,17 @@ Regex::Regex(const std::string& expr) : expression(expr) {
                 case '?': {
                     auto& prevComp = contexts.back().back();
                     assert(prevComp.pattern.size() + prevComp.inner.size() > 0);
-                    assert(prevComp.modifier == ' ');
-                    prevComp.modifier = c;
+                    assert((!prevComp.isProtected && prevComp.modifier == ' ')
+                        || (prevComp.isProtected && prevComp.groupModifier == ' '));
+                    if (prevComp.isProtected) {
+                        prevComp.groupModifier = c;                    
+                    } else {
+                        prevComp.modifier = c;
+                    }
                     break;
                 }
                 case '|': {
-                    auto currContext = contexts.back();
-                    contexts.back().clear();
-                    Composition comp;
-                    comp.modifier = '|';
-                    comp.inner = std::move(currContext);
-                    contexts.back().push_back(std::move(comp));
+                    assert(false);
                     break;
                 }
                 case '(':
@@ -41,10 +41,13 @@ Regex::Regex(const std::string& expr) : expression(expr) {
                     break;
                 case ')': {
                     assert(contexts.size() > 1);
-                    Composition comp;
-                    comp.inner = std::move(contexts.back());
+                    std::size_t nextIndex = contexts[contexts.size() - 2].size();
+                    for (auto& comp : contexts.back()) {
+                        contexts[contexts.size() - 2].push_back(std::move(comp));
+                    }
                     contexts.pop_back();
-                    contexts.back().push_back(std::move(comp));
+                    contexts.back().back().ref = nextIndex;
+                    contexts.back().back().isProtected = true;
                     break;
                 }
                 case '[': {
@@ -85,6 +88,7 @@ Regex::Regex(const std::string& expr) : expression(expr) {
     //     }
     //     ECHO("");
     // }
+    // assert(false);
 
     build(contexts.back());
 }
@@ -95,16 +99,9 @@ void Regex::build(const std::vector<Regex::Composition>& entities) {
     // Creates simple transitions, ignoring modifiers
     for (std::size_t i = 0; i < entities.size(); i++) {
         auto& entity = entities[i];
+        std::size_t lastIndex = stateList.size() - 1;
         // TODO: handle '|'
-        if (entity.inner.size() > 0) {
-            Regex* innerRegex = new Regex();
-            innerRegex->build(entity.inner);
-            entityToState[i] = stateList.size() - 1;
-            stateList.back().spontaneous.insert(stateList.size());
-            stateList.push_back(State(innerRegex));
-            continue;
-        }
-        entityToState[i] = stateList.size() - 1;
+        entityToState[i] = lastIndex;
         stateList.back().transitions[entity.pattern] = stateList.size();
         stateList.push_back(State());
     }
@@ -125,15 +122,28 @@ void Regex::build(const std::vector<Regex::Composition>& entities) {
                 stateList[stateIndex].spontaneous.insert(stateIndex + 1);
                 break;
         }
+
+        switch (entity.groupModifier) {
+            case '*':
+                stateList[entity.ref].spontaneous.insert(stateIndex + 1);
+                stateList[stateIndex + 1].spontaneous.insert(entity.ref);
+                break;
+            case '+':
+                stateList[stateIndex + 1].spontaneous.insert(entity.ref);
+                break;
+            case '?':
+                stateList[entity.ref].spontaneous.insert(stateIndex + 1);
+                break;
+        }
     }
 
     reset();
 
     // for (std::size_t i = 0; i < stateList.size(); i++) {
     //     ECHO(std::to_string(i) + ":");
-    //     if (stateList[i].inner != nullptr) {
-    //         ECHO("\t[INNER REGEX]");
-    //     }
+    //     // if (stateList[i].inner != nullptr) {
+    //     //     ECHO("\t[INNER REGEX]");
+    //     // }
     //     for (auto& pair : stateList[i].transitions) {
     //         ECHO("\t" + pair.first + " -> " + std::to_string(pair.second));
     //     }
@@ -199,6 +209,9 @@ void Regex::debug(const Composition& comp) const {
     TRACE(comp.pattern);
     TRACE(comp.modifier);
     TRACE(comp.inner.size());
+    TRACE(comp.ref);
+    TRACE(comp.isProtected);
+    TRACE(comp.groupModifier);
     if (comp.inner.size() > 0) {
         ECHO("[IN]");
         for (auto& c : comp.inner) {
