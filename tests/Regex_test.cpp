@@ -62,6 +62,39 @@ TEST_F(TestRegex, BasicMatching1) {
 //     ASSERT_FALSE(regex.matches("00110011"));
 // }
 
+TEST_F(TestRegex, ProgressiveScan) {
+    Regex regex("ab+c?");
+    regex.read('a');
+    ASSERT_FALSE(regex.matches());
+    ASSERT_FALSE(regex.aborted());
+    regex.read('b');
+    ASSERT_TRUE(regex.matches());
+    ASSERT_FALSE(regex.aborted());
+    regex.read('c');
+    ASSERT_TRUE(regex.matches());
+    ASSERT_FALSE(regex.aborted());
+    regex.read('d');
+    ASSERT_FALSE(regex.matches());
+    ASSERT_TRUE(regex.aborted());
+
+    regex.reset();
+    regex.read('a');
+    ASSERT_FALSE(regex.matches());
+    ASSERT_FALSE(regex.aborted());
+    regex.read('b');
+    ASSERT_TRUE(regex.matches());
+    ASSERT_FALSE(regex.aborted());
+    regex.read('b');
+    ASSERT_TRUE(regex.matches());
+    ASSERT_FALSE(regex.aborted());
+    regex.read('c');
+    ASSERT_TRUE(regex.matches());
+    ASSERT_FALSE(regex.aborted());
+    regex.read('c');
+    ASSERT_FALSE(regex.matches());
+    ASSERT_TRUE(regex.aborted());
+}
+
 // TEST_F(TestRegex, Wildcard) {
 //     Regex regex(".");
 //     ASSERT_TRUE(regex.matches("."));
