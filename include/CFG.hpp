@@ -181,6 +181,12 @@ public:
     bool isNonTerminal(const Symbol&) const;
     std::string toReadableForm(const Production&) const;
 
+    // Changes the default representation of CFGs.
+    template<typename T>
+    static void setDefaultRepresentation(const T&) {
+        defaultRepresentation.reset(new T());
+    }
+
     // Returns a BNF representation of this CFG.
     // Complexity: O(s)
     BNF debug() const;
@@ -198,10 +204,6 @@ private:
 
     std::shared_ptr<const CFGRepresentation> representation;
     static std::shared_ptr<const CFGRepresentation> defaultRepresentation;
-    template<typename T>
-    static void setDefaultRepresentation(const T&) {
-        defaultRepresentation.reset(new T());
-    }
 
     const CFGRepresentation& getRepresentation() const;
 

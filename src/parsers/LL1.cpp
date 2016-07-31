@@ -80,7 +80,7 @@ bool parser::LL1::canParse() const {
 ParseResults parser::LL1::unwind(std::stack<Symbol>& stack, const Symbol& input) {
     ParseResults result;
     Symbol& top = stack.top();
-    if (getCFG().isTerminal(top)) {
+    if (getCFG().isTerminal(top) || top == END_OF_SENTENCE) {
         result.accepted = true;
         return result;
     }
