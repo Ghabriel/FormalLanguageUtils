@@ -103,26 +103,26 @@ TEST_F(TestRegex, BasicMatching1) {
 //     ASSERT_FALSE(regex.matches("Zabc"));
 // }
 
-// TEST_F(TestRegex, CharClasses) {
-//     Regex regex("[0-9]+");
-//     ASSERT_TRUE(regex.matches("0"));
-//     ASSERT_TRUE(regex.matches("5"));
-//     ASSERT_TRUE(regex.matches("10239023"));
-//     ASSERT_FALSE(regex.matches("381933d12938"));
-//     ASSERT_FALSE(regex.matches("z"));
-//     ASSERT_FALSE(regex.matches(""));
-//     ASSERT_FALSE(regex.matches("@"));
+TEST_F(TestRegex, CharClasses) {
+    Regex regex("[0-9]+");
+    ASSERT_TRUE(regex.matches("0"));
+    ASSERT_TRUE(regex.matches("5"));
+    ASSERT_TRUE(regex.matches("10239023"));
+    ASSERT_FALSE(regex.matches("381933d12938"));
+    ASSERT_FALSE(regex.matches("z"));
+    ASSERT_FALSE(regex.matches(""));
+    ASSERT_FALSE(regex.matches("@"));
 
-//     regex = Regex("[A-Za-z_][A-Za-z0-9_]* = [0-9]+");
-//     ASSERT_TRUE(regex.matches("three = 3"));
-//     ASSERT_TRUE(regex.matches("_valid = 77"));
-//     ASSERT_TRUE(regex.matches("_a10 = 2"));
-//     ASSERT_TRUE(regex.matches("_ = 3"));
-//     ASSERT_FALSE(regex.matches("3ab = 9"));
-//     ASSERT_FALSE(regex.matches("num$ = 0"));
-//     ASSERT_FALSE(regex.matches("$x = 4"));
-//     ASSERT_FALSE(regex.matches("abc = def"));
-// }
+    regex = Regex("[A-Za-z_][A-Za-z0-9_]* = [0-9]+");
+    ASSERT_TRUE(regex.matches("three = 3"));
+    ASSERT_TRUE(regex.matches("_valid = 77"));
+    ASSERT_TRUE(regex.matches("_a10 = 2"));
+    ASSERT_TRUE(regex.matches("_ = 3"));
+    ASSERT_FALSE(regex.matches("3ab = 9"));
+    ASSERT_FALSE(regex.matches("num$ = 0"));
+    ASSERT_FALSE(regex.matches("$x = 4"));
+    ASSERT_FALSE(regex.matches("abc = def"));
+}
 
 // TEST_F(TestRegex, EscapeSequences) {
 //     Regex regex("\\(.*\\)");
