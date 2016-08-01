@@ -9,8 +9,9 @@
 #include "Regex.hpp"
 
 int main(int, char**) {
-    Regex regex("a(bc)*d");
-    TRACE(regex.matches("abcd"));
+    // Regex regex("a(bc)*d|e(fgh)?");
+    Regex regex("ab|cd");
+    TRACE(regex.matches("cd"));
 
     // Lexer lexer;
     // lexer.addToken("T_NUMBER", "[0-9]+\\.?[0-9]*|\\.[0-9]+");

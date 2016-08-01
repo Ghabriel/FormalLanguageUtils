@@ -5,6 +5,8 @@
 #include "Regex.hpp"
 #include "utils.hpp"
 
+unsigned Regex::Composition::nextId = 0;
+
 Regex::Regex() {}
 
 Regex::Regex(const std::string& expr) : expression(expr) {
@@ -13,6 +15,8 @@ Regex::Regex(const std::string& expr) : expression(expr) {
     std::size_t length = expr.size();
     std::vector<std::vector<Composition>> contexts;
     contexts.push_back(std::vector<Composition>());
+    std::vector<std::pair<unsigned, unsigned>> branches;
+    unsigned nestingLevel = 0;
     while (i < length) {
         char c = expr[i];
         if (!escape) {
@@ -22,7 +26,7 @@ Regex::Regex(const std::string& expr) : expression(expr) {
                 case '+':
                 case '?': {
                     auto& prevComp = contexts.back().back();
-                    assert(prevComp.pattern.size() + prevComp.inner.size() > 0);
+                    assert(prevComp.pattern.size() > 0);
                     assert((!prevComp.isProtected && prevComp.modifier == ' ')
                         || (prevComp.isProtected && prevComp.groupModifier == ' '));
                     if (prevComp.isProtected) {
@@ -32,12 +36,22 @@ Regex::Regex(const std::string& expr) : expression(expr) {
                     }
                     break;
                 }
-                case '|': {
-                    assert(false);
+                case '|':
+                    branches.push_back(std::make_pair(contexts.back().front().id, Composition::nextId));
+                    // auto currContext = contexts.back();
+                    // contexts.back().clear();
+                    // contexts.back().push_back(Composition());
+                    // auto& currComposition = contexts.back().back();
+                    // currComposition.modifier = '|';
+                    // currComposition.ref = contexts.back().size();
+                    // currComposition.rightRef = currComposition.ref + currContext.size();
+                    // for (auto& comp : currContext) {
+                    //     contexts.back().push_back(comp);
+                    // }
                     break;
-                }
                 case '(':
                     contexts.push_back(std::vector<Composition>());
+                    nestingLevel++;
                     break;
                 case ')': {
                     assert(contexts.size() > 1);
@@ -48,6 +62,7 @@ Regex::Regex(const std::string& expr) : expression(expr) {
                     contexts.pop_back();
                     contexts.back().back().ref = nextIndex;
                     contexts.back().back().isProtected = true;
+                    nestingLevel--;
                     break;
                 }
                 case '[': {
@@ -60,6 +75,7 @@ Regex::Regex(const std::string& expr) : expression(expr) {
                     buffer += ']';
                     Composition comp;
                     comp.pattern = std::move(buffer);
+                    comp.nestingLevel = nestingLevel;
                     contexts.back().push_back(std::move(comp));
                     break;
                 }
@@ -75,6 +91,7 @@ Regex::Regex(const std::string& expr) : expression(expr) {
 
         Composition comp;
         comp.pattern = c;
+        comp.nestingLevel = nestingLevel;
         contexts.back().push_back(std::move(comp));
         i++;
     }
@@ -88,25 +105,38 @@ Regex::Regex(const std::string& expr) : expression(expr) {
     //     }
     //     ECHO("");
     // }
+
+    // for (auto& pair : branches) {
+    //     TRACE(pair.first);
+    //     TRACE(pair.second);
+    //     ECHO("");
+    // }
     // assert(false);
 
-    build(contexts.back());
+    build(contexts.back(), branches);
 }
 
-void Regex::build(const std::vector<Regex::Composition>& entities) {
+void Regex::build(const std::vector<Regex::Composition>& entities,
+    const std::vector<std::pair<unsigned, unsigned>>& branches) {
+
     std::unordered_map<std::size_t, std::size_t> entityToState;
     stateList.push_back(State());
     // Creates simple transitions, ignoring modifiers
     for (std::size_t i = 0; i < entities.size(); i++) {
         auto& entity = entities[i];
+        for (auto& pair : branches) {
+            if (pair.second == entity.id) {
+                stateList.push_back(State());
+            }
+        }
+
         std::size_t lastIndex = stateList.size() - 1;
-        // TODO: handle '|'
         entityToState[i] = lastIndex;
         stateList.back().transitions[entity.pattern] = stateList.size();
         stateList.push_back(State());
     }
 
-    // Creates missing transitions, considering modifiers
+    // Creates transitions that involve modifiers
     for (std::size_t i = 0; i < entities.size(); i++) {
         auto& entity = entities[i];
         std::size_t stateIndex = entityToState[i];
@@ -137,13 +167,37 @@ void Regex::build(const std::vector<Regex::Composition>& entities) {
         }
     }
 
+    // Creates transitions that involve the operator |
+    for (auto& pair : branches) {
+        std::size_t s1 = entityToState[pair.first];
+        std::size_t s2 = entityToState[pair.second];
+        stateList[s1].spontaneous.insert(s2);
+
+        unsigned nestingLevel = entities[pair.second].nestingLevel;
+        std::size_t i = pair.second + 1;
+        while (i < entities.size() && entities[i].nestingLevel >= nestingLevel) {
+            i++;
+        }
+        std::size_t targetIndex;
+        if (i == entities.size()) {
+            targetIndex = stateList.size() - 1;
+        } else {
+            targetIndex = entityToState[i];
+        }
+        std::size_t delta = pair.second - pair.first;
+        stateList[s1 + delta].spontaneous.insert(targetIndex);
+    }
+
     reset();
+
+    // ECHO("-----");
+    // for (auto& pair : entityToState) {
+    //     TRACE(pair.first);
+    //     TRACE(pair.second);
+    // }
 
     // for (std::size_t i = 0; i < stateList.size(); i++) {
     //     ECHO(std::to_string(i) + ":");
-    //     // if (stateList[i].inner != nullptr) {
-    //     //     ECHO("\t[INNER REGEX]");
-    //     // }
     //     for (auto& pair : stateList[i].transitions) {
     //         ECHO("\t" + pair.first + " -> " + std::to_string(pair.second));
     //     }
@@ -206,19 +260,13 @@ void Regex::expandSpontaneous(std::unordered_set<std::size_t>& states) const {
 }
 
 void Regex::debug(const Composition& comp) const {
+    ECHO("[" + std::to_string(comp.id) + "]");
     TRACE(comp.pattern);
     TRACE(comp.modifier);
-    TRACE(comp.inner.size());
     TRACE(comp.ref);
     TRACE(comp.isProtected);
     TRACE(comp.groupModifier);
-    if (comp.inner.size() > 0) {
-        ECHO("[IN]");
-        for (auto& c : comp.inner) {
-            debug(c);
-        }
-        ECHO("[OUT]");
-    }
+    TRACE(comp.nestingLevel);
 }
 
 std::size_t Regex::State::read(char c) const {
