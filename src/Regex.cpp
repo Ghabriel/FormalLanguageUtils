@@ -16,8 +16,17 @@ Regex::Regex(const std::string& expr) : expression(expr) {
     contexts.push_back(std::vector<Composition>());
     std::vector<std::pair<unsigned, unsigned>> branches;
     bool contextChange = false;
-    while (i < length) {
-        char c = expr[i];
+
+    std::queue<char> extraSymbols;
+    auto next = [&]() {
+        if (extraSymbols.empty()) {
+            i++;
+        } else {
+            extraSymbols.pop();
+        }
+    };
+    while (i < length || !extraSymbols.empty()) {
+        char c = (extraSymbols.empty()) ? expr[i] : extraSymbols.front();
         std::string buffer;
         buffer = c;
         if (!escape) {
@@ -35,6 +44,38 @@ Regex::Regex(const std::string& expr) : expression(expr) {
                     } else {
                         prevComp.modifier = c;
                     }
+                    break;
+                }
+                case '{': {
+                    assert(false);
+                    // auto& prevComp = contexts.back().back();
+                    // assert(prevComp.pattern.size() > 0);
+                    // assert((!prevComp.isProtected && prevComp.modifier == ' ')
+                    //     || (prevComp.isProtected && prevComp.groupModifier == ' '));
+
+                    // int start = -1;
+                    // int end = -1;
+                    // i++;
+                    // buffer.clear();
+                    // while (expr[i] != '}' && i < length) {
+                    //     buffer += expr[i];
+                    //     if (expr[i] == ',') {
+                    //         start = stoi(buffer);
+                    //         buffer.clear();
+                    //         continue;
+                    //     }
+                    //     i++;
+                    // }
+                    // assert(i < length);
+                    // end = stoi(buffer);
+                    // if (start < 0) {
+                    //     start = end;
+                    // }
+
+                    // assert(start >= 0 && end > 0);
+                    // for (unsigned index = 1; index < start; index++) {
+                    //     extraSymbols.push(prevComp);
+                    // }
                     break;
                 }
                 case '|':
@@ -78,7 +119,7 @@ Regex::Regex(const std::string& expr) : expression(expr) {
             }
 
             if (skip) {
-                i++;
+                next();
                 continue;
             }
         }
@@ -89,24 +130,18 @@ Regex::Regex(const std::string& expr) : expression(expr) {
         comp.contextChange = contextChange;
         contextChange = false;
         contexts.back().push_back(std::move(comp));
-        i++;
+        next();
     }
 
     assert(contexts.size() == 1);
 
-    // for (i = 0; i < contexts.size(); i++) {
-    //     for (std::size_t j = 0; j < contexts[i].size(); j++) {
-    //         debug(contexts[i][j]);
-    //         ECHO("");
-    //     }
-    //     ECHO("");
-    // }
-
-    // for (auto& pair : branches) {
-    //     TRACE(pair.first);
-    //     TRACE(pair.second);
-    //     ECHO("");
-    // }
+    for (i = 0; i < contexts.size(); i++) {
+        for (std::size_t j = 0; j < contexts[i].size(); j++) {
+            debug(contexts[i][j]);
+            ECHO("");
+        }
+        ECHO("");
+    }
     // assert(false);
 
     build(contexts.back(), branches);
@@ -121,7 +156,7 @@ void Regex::build(const std::vector<Regex::Composition>& entities,
     for (std::size_t i = 0; i < entities.size(); i++) {
         auto& entity = entities[i];
         for (auto& pair : branches) {
-            if (pair.second == entity.id) {
+            if (/*pair.first == entity.id || */pair.second == entity.id) {
                 stateList.push_back(State());
             }
         }
@@ -169,6 +204,8 @@ void Regex::build(const std::vector<Regex::Composition>& entities,
         std::size_t s1 = entityToState[pair.first];
         std::size_t s2 = entityToState[pair.second];
         stateList[s1].spontaneous.insert(s2);
+        // stateList[s1 - 1].spontaneous.insert(s1);
+        // stateList[s1 - 1].spontaneous.insert(s2);
 
         std::size_t i = pair.second + 1;
         while (i < entities.size()) {
@@ -249,16 +286,16 @@ void Regex::build(const std::vector<Regex::Composition>& entities,
     //     TRACE(pair.second);
     // }
 
-    // for (std::size_t i = 0; i < stateList.size(); i++) {
-    //     ECHO(std::to_string(i) + ":");
-    //     for (auto& pair : stateList[i].transitions) {
-    //         ECHO("\t" + pair.first + " -> " + std::to_string(pair.second));
-    //     }
-    //     for (auto& index : stateList[i].spontaneous) {
-    //         ECHO("\t& -> " + std::to_string(index));
-    //     }
-    // }
-    // TRACE(acceptingState);
+    for (std::size_t i = 0; i < stateList.size(); i++) {
+        ECHO(std::to_string(i) + ":");
+        for (auto& pair : stateList[i].transitions) {
+            ECHO("\t" + pair.first + " -> " + std::to_string(pair.second));
+        }
+        for (auto& index : stateList[i].spontaneous) {
+            ECHO("\t& -> " + std::to_string(index));
+        }
+    }
+    TRACE(acceptingState);
 }
 
 void Regex::read(char c) {
