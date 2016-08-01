@@ -1,4 +1,5 @@
 /* created by Ghabriel Nunes <ghabriel.nunes@gmail.com> [2016] */
+#include <algorithm>
 #include <cassert>
 #include <stack>
 #include <queue>
@@ -65,6 +66,13 @@ Regex::Regex(const std::string& expr) : expression(expr) {
                     skip = false;
                     break;
                 }
+                case '\\':
+                    escape = true;
+                    break;
+                case '.':
+                    buffer = "[[";
+                    skip = false;
+                    break;
                 default:
                     skip = false;
             }
@@ -75,6 +83,7 @@ Regex::Regex(const std::string& expr) : expression(expr) {
             }
         }
 
+        escape = false;
         Composition comp(nextCompositionId++);
         comp.pattern = std::move(buffer);
         comp.contextChange = contextChange;
@@ -249,6 +258,7 @@ void Regex::build(const std::vector<Regex::Composition>& entities,
     //         ECHO("\t& -> " + std::to_string(index));
     //     }
     // }
+    // TRACE(acceptingState);
 }
 
 void Regex::read(char c) {
@@ -260,6 +270,11 @@ void Regex::read(char c) {
         }
     }
     expandSpontaneous(newStates);
+    // TRACE(c);
+    // std::vector<std::size_t> container(newStates.begin(), newStates.end());
+    // std::sort(container.begin(), container.end());
+    // TRACE_IT(container);
+    // ECHO("");
     currentStates = std::move(newStates);
 }
 
@@ -316,7 +331,7 @@ void Regex::debug(const Composition& comp) const {
 std::size_t Regex::State::read(char c) const {
     for (auto& pair : transitions) {
         bool ok = false;
-        if (pair.first[0] == '[') {
+        if (pair.first.front() == '[' && pair.first.back() == ']') {
             char buffer = '\0';
             bool validBuffer = false;
             bool intervalMode = false;
@@ -359,7 +374,9 @@ std::size_t Regex::State::read(char c) const {
             if (validBuffer && c == buffer) {
                 ok = true;
             }
-        } else if (c == pair.first[0]) {
+        } else if (pair.first.front() == '[' && pair.first.back() == '[') {
+            ok = true;
+        } else if (c == pair.first.front()) {
             ok = true;
         }
 

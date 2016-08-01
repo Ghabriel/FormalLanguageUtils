@@ -9,11 +9,11 @@
 #include "Regex.hpp"
 
 int main(int, char**) {
-    Regex regex("a*b*");
-    TRACE(regex.matches("abbaba"));
+    Regex regex(".");
+    TRACE(regex.matches("."));
 
-    // Regex regex("(a|b)*c(de)*");
-    // TRACE(regex.matches("abbcdede"));
+    // Regex regex(".*@|Z");
+    // TRACE(regex.matches("ZZ"));
 
     // Lexer lexer;
     // lexer.addToken("T_NUMBER", "[0-9]+\\.?[0-9]*|\\.[0-9]+");
