@@ -29,20 +29,24 @@ private:
         std::unordered_set<std::size_t> spontaneous;
     };
     struct Composition {
-        Composition() : id(nextId++) {}
-        static unsigned nextId;
+        Composition() { assert(false); }
+        Composition(unsigned id) : id(id) {}
         unsigned id = 0;
+        unsigned groupId = 0;
         Pattern pattern;
         char modifier = ' ';
         std::size_t ref = INT_MAX;
         bool isProtected = false;
         char groupModifier =  ' ';
-        unsigned nestingLevel = 0;
+        bool contextChange = false;
     };
 
+    unsigned nextCompositionId = 0;
+    unsigned nextGroupId = 0;
     std::string expression;
     std::vector<State> stateList;
     std::unordered_set<std::size_t> currentStates;
+    std::size_t acceptingState;
 
     void build(const std::vector<Composition>&, const std::vector<std::pair<unsigned, unsigned>>&);
     void expandSpontaneous(std::unordered_set<std::size_t>&) const;

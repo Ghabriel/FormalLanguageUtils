@@ -5,8 +5,6 @@
 #include "Regex.hpp"
 #include "utils.hpp"
 
-unsigned Regex::Composition::nextId = 0;
-
 Regex::Regex() {}
 
 Regex::Regex(const std::string& expr) : expression(expr) {
@@ -16,9 +14,11 @@ Regex::Regex(const std::string& expr) : expression(expr) {
     std::vector<std::vector<Composition>> contexts;
     contexts.push_back(std::vector<Composition>());
     std::vector<std::pair<unsigned, unsigned>> branches;
-    unsigned nestingLevel = 0;
+    bool contextChange = false;
     while (i < length) {
         char c = expr[i];
+        std::string buffer;
+        buffer = c;
         if (!escape) {
             bool skip = true;
             switch (c) {
@@ -37,21 +37,10 @@ Regex::Regex(const std::string& expr) : expression(expr) {
                     break;
                 }
                 case '|':
-                    branches.push_back(std::make_pair(contexts.back().front().id, Composition::nextId));
-                    // auto currContext = contexts.back();
-                    // contexts.back().clear();
-                    // contexts.back().push_back(Composition());
-                    // auto& currComposition = contexts.back().back();
-                    // currComposition.modifier = '|';
-                    // currComposition.ref = contexts.back().size();
-                    // currComposition.rightRef = currComposition.ref + currContext.size();
-                    // for (auto& comp : currContext) {
-                    //     contexts.back().push_back(comp);
-                    // }
+                    branches.push_back(std::make_pair(contexts.back().front().id, nextCompositionId));
                     break;
                 case '(':
                     contexts.push_back(std::vector<Composition>());
-                    nestingLevel++;
                     break;
                 case ')': {
                     assert(contexts.size() > 1);
@@ -62,21 +51,18 @@ Regex::Regex(const std::string& expr) : expression(expr) {
                     contexts.pop_back();
                     contexts.back().back().ref = nextIndex;
                     contexts.back().back().isProtected = true;
-                    nestingLevel--;
+                    contextChange = true;
                     break;
                 }
                 case '[': {
-                    std::string buffer;
+                    buffer.clear();
                     while (expr[i] != ']' && i < length) {
                         buffer += expr[i];
                         i++;
                     }
                     assert(i < length);
                     buffer += ']';
-                    Composition comp;
-                    comp.pattern = std::move(buffer);
-                    comp.nestingLevel = nestingLevel;
-                    contexts.back().push_back(std::move(comp));
+                    skip = false;
                     break;
                 }
                 default:
@@ -89,9 +75,10 @@ Regex::Regex(const std::string& expr) : expression(expr) {
             }
         }
 
-        Composition comp;
-        comp.pattern = c;
-        comp.nestingLevel = nestingLevel;
+        Composition comp(nextCompositionId++);
+        comp.pattern = std::move(buffer);
+        comp.contextChange = contextChange;
+        contextChange = false;
         contexts.back().push_back(std::move(comp));
         i++;
     }
@@ -153,29 +140,32 @@ void Regex::build(const std::vector<Regex::Composition>& entities,
                 break;
         }
 
+        std::size_t refIndex = entityToState[entity.ref];
         switch (entity.groupModifier) {
             case '*':
-                stateList[entity.ref].spontaneous.insert(stateIndex + 1);
-                stateList[stateIndex + 1].spontaneous.insert(entity.ref);
+                stateList[refIndex].spontaneous.insert(stateIndex + 1);
+                stateList[stateIndex + 1].spontaneous.insert(refIndex);
                 break;
             case '+':
-                stateList[stateIndex + 1].spontaneous.insert(entity.ref);
+                stateList[stateIndex + 1].spontaneous.insert(refIndex);
                 break;
             case '?':
-                stateList[entity.ref].spontaneous.insert(stateIndex + 1);
+                stateList[refIndex].spontaneous.insert(stateIndex + 1);
                 break;
         }
     }
 
-    // Creates transitions that involve the operator |
+    // Creates transitions that involve the | operator
     for (auto& pair : branches) {
         std::size_t s1 = entityToState[pair.first];
         std::size_t s2 = entityToState[pair.second];
         stateList[s1].spontaneous.insert(s2);
 
-        unsigned nestingLevel = entities[pair.second].nestingLevel;
         std::size_t i = pair.second + 1;
-        while (i < entities.size() && entities[i].nestingLevel >= nestingLevel) {
+        while (i < entities.size()) {
+            if (entities[i].contextChange && entities[i].ref > i) {
+                break;
+            }
             i++;
         }
         std::size_t targetIndex;
@@ -186,6 +176,60 @@ void Regex::build(const std::vector<Regex::Composition>& entities,
         }
         std::size_t delta = pair.second - pair.first;
         stateList[s1 + delta].spontaneous.insert(targetIndex);
+    }
+
+    acceptingState = stateList.size() - 1;
+
+    // Partitions states that have back-references and forward-references
+    std::unordered_map<std::size_t, std::size_t> stateMapping;
+    for (std::size_t i = 0; i < stateList.size(); i++) {
+        State& state = stateList[i];
+        bool hasBackReference = false;
+        bool hasForwardReference = false;
+        std::unordered_set<std::size_t> forwardIndexes;
+        for (auto& pair : state.transitions) {
+            if (stateMapping.count(pair.second) > 0) {
+                pair.second = stateMapping[pair.second];
+            }
+        }
+
+        for (auto& pair : state.transitions) {
+            if (stateMapping.count(pair.second) > 0) {
+                state.transitions[pair.first] = stateMapping[pair.second];
+            }
+        }
+
+        std::unordered_set<std::size_t> newTransitions;
+        newTransitions.reserve(state.spontaneous.size());
+        for (auto& index : state.spontaneous) {
+            if (stateMapping.count(index) > 0) {
+                newTransitions.insert(stateMapping[index]);
+            } else {
+                newTransitions.insert(index);
+            }
+        }
+        state.spontaneous.swap(newTransitions);
+
+        for (auto index : state.spontaneous) {
+            if (index < i) {
+                hasBackReference = true;
+            }
+            if (index > i) {
+                hasForwardReference = true;
+                forwardIndexes.insert(index);
+            }
+            if (hasBackReference && hasForwardReference) {
+                break;
+            }
+        }
+
+        if (hasBackReference && hasForwardReference) {
+            State newState;
+            newState.transitions = state.transitions;
+            newState.spontaneous = std::move(forwardIndexes);
+            stateMapping.insert(std::make_pair(i, stateList.size()));
+            stateList.push_back(std::move(newState));
+        }
     }
 
     reset();
@@ -228,7 +272,7 @@ bool Regex::matches(const std::string& input) {
 }
 
 bool Regex::matches() const {
-    return currentStates.count(stateList.size() - 1) > 0;
+    return currentStates.count(acceptingState) > 0;
 }
 
 bool Regex::aborted() const {
@@ -266,7 +310,7 @@ void Regex::debug(const Composition& comp) const {
     TRACE(comp.ref);
     TRACE(comp.isProtected);
     TRACE(comp.groupModifier);
-    TRACE(comp.nestingLevel);
+    TRACE(comp.contextChange);
 }
 
 std::size_t Regex::State::read(char c) const {
