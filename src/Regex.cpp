@@ -1,7 +1,5 @@
 /* created by Ghabriel Nunes <ghabriel.nunes@gmail.com> [2016] */
-#include <algorithm>
 #include <cassert>
-#include <stack>
 #include <queue>
 #include "Regex.hpp"
 #include "utils.hpp"
@@ -12,272 +10,240 @@ Regex::Regex(const std::string& expr) : expression(expr) {
     bool escape = false;
     std::size_t i = 0;
     std::size_t length = expr.size();
-    std::vector<std::vector<Composition>> contexts;
-    contexts.push_back(std::vector<Composition>());
-    std::vector<std::pair<unsigned, unsigned>> branches;
-    bool contextChange = false;
+    unsigned nestingLevel = 0;
 
-    std::queue<char> extraSymbols;
-    auto next = [&]() {
-        if (extraSymbols.empty()) {
-            i++;
-        } else {
-            extraSymbols.pop();
-        }
-    };
-    while (i < length || !extraSymbols.empty()) {
-        char c = (extraSymbols.empty()) ? expr[i] : extraSymbols.front();
-        std::string buffer;
-        buffer = c;
+    std::deque<Composition> tokens;
+    Composition comp;
+    comp.pattern = PATTERN_CONTEXT_START;
+    comp.special = true;
+    tokens.push_back(std::move(comp));
+
+    while (i < length) {
+        bool special = false;
+        bool skip = false;
+        char c = expr[i];
+        std::string pattern;
+        pattern = c;
         if (!escape) {
-            bool skip = true;
+            skip = true;
             switch (c) {
                 case '*':
+                    assert(tokens.size() > 0);
+                    tokens.back().min = 0;
+                    tokens.back().max = -1;
+                    break;
                 case '+':
-                case '?': {
-                    auto& prevComp = contexts.back().back();
-                    assert(prevComp.pattern.size() > 0);
-                    assert((!prevComp.isProtected && prevComp.modifier == ' ')
-                        || (prevComp.isProtected && prevComp.groupModifier == ' '));
-                    if (prevComp.isProtected) {
-                        prevComp.groupModifier = c;                    
-                    } else {
-                        prevComp.modifier = c;
-                    }
+                    assert(tokens.size() > 0);
+                    tokens.back().min = 1;
+                    tokens.back().max = -1;
                     break;
-                }
+                case '?':
+                    assert(tokens.size() > 0);
+                    tokens.back().min = 0;
+                    tokens.back().max = 1;
+                    break;
                 case '{': {
-                    assert(false);
-                    // auto& prevComp = contexts.back().back();
-                    // assert(prevComp.pattern.size() > 0);
-                    // assert((!prevComp.isProtected && prevComp.modifier == ' ')
-                    //     || (prevComp.isProtected && prevComp.groupModifier == ' '));
-
-                    // int start = -1;
-                    // int end = -1;
-                    // i++;
-                    // buffer.clear();
-                    // while (expr[i] != '}' && i < length) {
-                    //     buffer += expr[i];
-                    //     if (expr[i] == ',') {
-                    //         start = stoi(buffer);
-                    //         buffer.clear();
-                    //         continue;
-                    //     }
-                    //     i++;
-                    // }
-                    // assert(i < length);
-                    // end = stoi(buffer);
-                    // if (start < 0) {
-                    //     start = end;
-                    // }
-
-                    // assert(start >= 0 && end > 0);
-                    // for (unsigned index = 1; index < start; index++) {
-                    //     extraSymbols.push(prevComp);
-                    // }
-                    break;
-                }
-                case '|':
-                    branches.push_back(std::make_pair(contexts.back().front().id, nextCompositionId));
-                    break;
-                case '(':
-                    contexts.push_back(std::vector<Composition>());
-                    break;
-                case ')': {
-                    assert(contexts.size() > 1);
-                    std::size_t nextIndex = contexts[contexts.size() - 2].size();
-                    for (auto& comp : contexts.back()) {
-                        contexts[contexts.size() - 2].push_back(std::move(comp));
-                    }
-                    contexts.pop_back();
-                    contexts.back().back().ref = nextIndex;
-                    contexts.back().back().isProtected = true;
-                    contextChange = true;
-                    break;
-                }
-                case '[': {
-                    buffer.clear();
-                    while (expr[i] != ']' && i < length) {
-                        buffer += expr[i];
+                    assert(tokens.size() > 0);
+                    int start = -1;
+                    int end = -1;
+                    i++;
+                    pattern.clear();
+                    while (expr[i] != '}' && i < length) {
+                        if (expr[i] == ',') {
+                            start = stoi(pattern);
+                            pattern.clear();
+                        } else {
+                            pattern += expr[i];                        
+                        }
                         i++;
                     }
                     assert(i < length);
-                    buffer += ']';
-                    skip = false;
+                    if (!pattern.empty()) {
+                        end = stoi(pattern);                    
+                    }
+                    if (start < 0) {
+                        start = end;
+                    }
+                    tokens.back().min = start;
+                    tokens.back().max = end;
                     break;
                 }
+                case '|':
+                    pattern = PATTERN_OR;
+                    skip = false;
+                    special = true;
+                    break;
+                case '(':
+                    nestingLevel++;
+                    pattern = PATTERN_CONTEXT_START;
+                    skip = false;
+                    special = true;
+                    break;
+                case ')':
+                    assert(nestingLevel > 0);
+                    nestingLevel--;
+                    pattern = PATTERN_CONTEXT_END;
+                    skip = false;
+                    special = true;
+                    break;
+                case '[':
+                    i++;
+                    while (expr[i] != ']' && i < length) {
+                        pattern += expr[i];
+                        i++;
+                    }
+                    assert(i < length);
+                    pattern += ']';
+                    skip = false;
+                    break;
                 case '\\':
                     escape = true;
                     break;
                 case '.':
-                    buffer = "[[";
+                    pattern = PATTERN_WILDCARD;
                     skip = false;
                     break;
                 default:
                     skip = false;
             }
-
-            if (skip) {
-                next();
-                continue;
-            }
         }
 
-        escape = false;
-        Composition comp(nextCompositionId++);
-        comp.pattern = std::move(buffer);
-        comp.contextChange = contextChange;
-        contextChange = false;
-        contexts.back().push_back(std::move(comp));
-        next();
-    }
-
-    assert(contexts.size() == 1);
-
-    for (i = 0; i < contexts.size(); i++) {
-        for (std::size_t j = 0; j < contexts[i].size(); j++) {
-            debug(contexts[i][j]);
-            ECHO("");
+        if (!skip) {
+            escape = false;
+            Composition comp;
+            comp.pattern = std::move(pattern);
+            comp.nestingLevel = nestingLevel;
+            comp.special = special;
+            tokens.push_back(std::move(comp));
         }
-        ECHO("");
+        i++;
     }
+
+    assert(nestingLevel == 0);
+
+    Composition end;
+    end.pattern = PATTERN_CONTEXT_END;
+    end.special = true;
+    tokens.push_back(std::move(end));
+
+    // for (i = 0; i < tokens.size(); i++) {
+    //     tokens[i].id = i;
+    //     debug(tokens[i]);
+    //     ECHO("");
+    // }
     // assert(false);
 
-    build(contexts.back(), branches);
+    build(tokens);
 }
 
-void Regex::build(const std::vector<Regex::Composition>& entities,
-    const std::vector<std::pair<unsigned, unsigned>>& branches) {
+void Regex::build(std::deque<Regex::Composition>& tokens) {
+    // Expands tokes until [min,max] = [0,1] or [1,1] or [0,inf] for all of them
+    std::deque<Composition> newList;
+    while (!tokens.empty()) {
+        Composition& token = tokens.front();
+        // TODO: remove duplicated code
+        if ((token.min != 0 || token.max != 1)
+            && (token.min != 1 || token.max != 1)
+            && !token.ready
+            /*&& (token.min != 0 || token.max != -1)*/) {
+            Composition newToken;
+            newToken.pattern = token.pattern;
+            newToken.min = (token.min == 0) ? 0 : token.min - 1;
+            newToken.max = (token.max == -1) ? -1 : token.max - 1;
+            if (token.min == 0 && token.max == -1) {
+                newToken.ready = true;
+            }
+            newToken.nestingLevel = token.nestingLevel;
+            newToken.special = token.special;
+            newList.push_back(std::move(token));
+            tokens.pop_front();
+            tokens.push_front(std::move(newToken));
+        } else {
+            newList.push_back(std::move(token));
+            tokens.pop_front();
+        }
+    }
+
+    tokens.swap(newList);
+    std::size_t i = 0;
+    std::size_t size = tokens.size();
+    // for (i = 0; i < tokens.size(); i++) {
+    //     tokens[i].id = i;
+    //     debug(tokens[i]);
+    //     ECHO("");
+    // }
+    // assert(false);
+
+    // Calculates all next references
+    while (i < size - 1) {
+        if (tokens[i].pattern == PATTERN_CONTEXT_START) {
+            tokens[i].next.push_back(i + 1);
+            unsigned level = tokens[i].nestingLevel;
+            std::size_t j = i + 1;
+            while (tokens[j].nestingLevel >= level && j < size) {
+                if (tokens[j].nestingLevel == level && tokens[j].pattern == PATTERN_OR) {
+                    tokens[i].next.push_back(j + 1);
+                }
+                j++;
+            }
+        } else if (tokens[i + 1].pattern != PATTERN_OR) {
+            tokens[i].next = {i + 1};
+        } else {
+            std::size_t j = i + 1;
+            int count = 0;
+            // Will always find a match since the last token is a )
+            while (count > 0 || tokens[j].pattern != PATTERN_CONTEXT_END) {
+                if (tokens[j].pattern == PATTERN_CONTEXT_START) {
+                    count++;
+                } else if (tokens[j].pattern == PATTERN_CONTEXT_END) {
+                    count--;
+                }
+                j++;
+            }
+            tokens[i].next = {j};
+        }
+        i++;
+    }
 
     std::unordered_map<std::size_t, std::size_t> entityToState;
-    stateList.push_back(State());
-    // Creates simple transitions, ignoring modifiers
-    for (std::size_t i = 0; i < entities.size(); i++) {
-        auto& entity = entities[i];
-        for (auto& pair : branches) {
-            if (/*pair.first == entity.id || */pair.second == entity.id) {
-                stateList.push_back(State());
-            }
-        }
-
-        std::size_t lastIndex = stateList.size() - 1;
-        entityToState[i] = lastIndex;
-        stateList.back().transitions[entity.pattern] = stateList.size();
-        stateList.push_back(State());
-    }
-
-    // Creates transitions that involve modifiers
-    for (std::size_t i = 0; i < entities.size(); i++) {
-        auto& entity = entities[i];
-        std::size_t stateIndex = entityToState[i];
-        switch (entity.modifier) {
-            case '*':
-                stateList[stateIndex].spontaneous.insert(stateIndex + 1);
-                stateList[stateIndex + 1].spontaneous.insert(stateIndex);
-                break;
-            case '+':
-                stateList[stateIndex + 1].spontaneous.insert(stateIndex);
-                break;
-            case '?':
-                stateList[stateIndex].spontaneous.insert(stateIndex + 1);
-                break;
-        }
-
-        std::size_t refIndex = entityToState[entity.ref];
-        switch (entity.groupModifier) {
-            case '*':
-                stateList[refIndex].spontaneous.insert(stateIndex + 1);
-                stateList[stateIndex + 1].spontaneous.insert(refIndex);
-                break;
-            case '+':
-                stateList[stateIndex + 1].spontaneous.insert(refIndex);
-                break;
-            case '?':
-                stateList[refIndex].spontaneous.insert(stateIndex + 1);
-                break;
+    // Creates all necessary states
+    for (i = 0; i < size; i++) {
+        if (tokens[i].pattern != PATTERN_OR) {
+            entityToState[i] = stateList.size();
+            stateList.push_back(State());
         }
     }
+    acceptingState = entityToState[size - 1];
 
-    // Creates transitions that involve the | operator
-    for (auto& pair : branches) {
-        std::size_t s1 = entityToState[pair.first];
-        std::size_t s2 = entityToState[pair.second];
-        stateList[s1].spontaneous.insert(s2);
-        // stateList[s1 - 1].spontaneous.insert(s1);
-        // stateList[s1 - 1].spontaneous.insert(s2);
-
-        std::size_t i = pair.second + 1;
-        while (i < entities.size()) {
-            if (entities[i].contextChange && entities[i].ref > i) {
-                break;
+    i = 0;
+    // Creates all transitions
+    while (i < size) {
+        Composition& token = tokens[i];
+        if (token.pattern != PATTERN_OR) {
+            for (std::size_t index : token.next) {
+                std::size_t from = entityToState[i];
+                std::size_t to = entityToState[index];
+                if (token.special) {
+                    stateList[from].spontaneous.insert(to);
+                } else {
+                    stateList[from].transitions[token.pattern] = to;
+                    if (token.min == 0) {
+                        stateList[from].spontaneous.insert(to);
+                    }
+                    if (token.max == -1 && token.ready) {
+                        stateList[from].spontaneous.insert(entityToState[i - 1]);
+                    }
+                }
             }
-            i++;
         }
-        std::size_t targetIndex;
-        if (i == entities.size()) {
-            targetIndex = stateList.size() - 1;
-        } else {
-            targetIndex = entityToState[i];
-        }
-        std::size_t delta = pair.second - pair.first;
-        stateList[s1 + delta].spontaneous.insert(targetIndex);
+        i++;
     }
 
-    acceptingState = stateList.size() - 1;
-
-    // Partitions states that have back-references and forward-references
-    std::unordered_map<std::size_t, std::size_t> stateMapping;
-    for (std::size_t i = 0; i < stateList.size(); i++) {
-        State& state = stateList[i];
-        bool hasBackReference = false;
-        bool hasForwardReference = false;
-        std::unordered_set<std::size_t> forwardIndexes;
-        for (auto& pair : state.transitions) {
-            if (stateMapping.count(pair.second) > 0) {
-                pair.second = stateMapping[pair.second];
-            }
-        }
-
-        for (auto& pair : state.transitions) {
-            if (stateMapping.count(pair.second) > 0) {
-                state.transitions[pair.first] = stateMapping[pair.second];
-            }
-        }
-
-        std::unordered_set<std::size_t> newTransitions;
-        newTransitions.reserve(state.spontaneous.size());
-        for (auto& index : state.spontaneous) {
-            if (stateMapping.count(index) > 0) {
-                newTransitions.insert(stateMapping[index]);
-            } else {
-                newTransitions.insert(index);
-            }
-        }
-        state.spontaneous.swap(newTransitions);
-
-        for (auto index : state.spontaneous) {
-            if (index < i) {
-                hasBackReference = true;
-            }
-            if (index > i) {
-                hasForwardReference = true;
-                forwardIndexes.insert(index);
-            }
-            if (hasBackReference && hasForwardReference) {
-                break;
-            }
-        }
-
-        if (hasBackReference && hasForwardReference) {
-            State newState;
-            newState.transitions = state.transitions;
-            newState.spontaneous = std::move(forwardIndexes);
-            stateMapping.insert(std::make_pair(i, stateList.size()));
-            stateList.push_back(std::move(newState));
-        }
+    for (i = 0; i < tokens.size(); i++) {
+        tokens[i].id = i;
+        debug(tokens[i]);
+        ECHO("");
     }
-
     reset();
 
     // ECHO("-----");
@@ -358,11 +324,20 @@ void Regex::expandSpontaneous(std::unordered_set<std::size_t>& states) const {
 void Regex::debug(const Composition& comp) const {
     ECHO("[" + std::to_string(comp.id) + "]");
     TRACE(comp.pattern);
-    TRACE(comp.modifier);
-    TRACE(comp.ref);
-    TRACE(comp.isProtected);
-    TRACE(comp.groupModifier);
-    TRACE(comp.contextChange);
+    TRACE(comp.min);
+    TRACE(comp.max);
+    TRACE(comp.nestingLevel);
+    TRACE(comp.special);
+    if (comp.next.size() > 0) {
+        std::cout << "comp.next = ";
+        for (std::size_t i = 0; i < comp.next.size(); i++) {
+            if (i > 0) std::cout << ",";
+            std::cout << comp.next[i];
+        }
+        std::cout << std::endl;
+    } else {
+        TRACE_L("comp.next", "undefined");
+    }
 }
 
 std::size_t Regex::State::read(char c) const {
@@ -411,7 +386,7 @@ std::size_t Regex::State::read(char c) const {
             if (validBuffer && c == buffer) {
                 ok = true;
             }
-        } else if (pair.first.front() == '[' && pair.first.back() == '[') {
+        } else if (pair.first.front() == '[' && pair.first.back() == '.') {
             ok = true;
         } else if (c == pair.first.front()) {
             ok = true;

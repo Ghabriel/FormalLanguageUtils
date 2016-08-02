@@ -4,6 +4,7 @@
 #define REGEX_HPP
 
 #include <climits>
+#include <deque>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -29,26 +30,26 @@ private:
         std::unordered_set<std::size_t> spontaneous;
     };
     struct Composition {
-        Composition() { assert(false); }
-        Composition(unsigned id) : id(id) {}
-        unsigned id = 0;
-        unsigned groupId = 0;
         Pattern pattern;
-        char modifier = ' ';
-        std::size_t ref = INT_MAX;
-        bool isProtected = false;
-        char groupModifier =  ' ';
-        bool contextChange = false;
+        unsigned id = 0;
+        int min = 1;
+        int max = 1;
+        unsigned nestingLevel = 0;
+        bool special;
+        std::vector<std::size_t> next;
+        bool ready = false;
     };
 
-    unsigned nextCompositionId = 0;
-    unsigned nextGroupId = 0;
+    const std::string PATTERN_OR = "[|";
+    const std::string PATTERN_CONTEXT_START = "[(";
+    const std::string PATTERN_CONTEXT_END = "[)";
+    const std::string PATTERN_WILDCARD = "[.";
     std::string expression;
     std::vector<State> stateList;
     std::unordered_set<std::size_t> currentStates;
     std::size_t acceptingState;
 
-    void build(const std::vector<Composition>&, const std::vector<std::pair<unsigned, unsigned>>&);
+    void build(std::deque<Composition>&);
     void expandSpontaneous(std::unordered_set<std::size_t>&) const;
     void debug(const Composition&) const;
 };
