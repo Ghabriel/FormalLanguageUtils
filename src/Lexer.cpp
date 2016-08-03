@@ -26,6 +26,7 @@ const std::string& Lexer::getError() const {
 }
 
 std::vector<Token> Lexer::read(const std::string& input) {
+    errorMessage.clear();
     std::vector<Token> tokens;
     std::size_t i = 0;
     std::size_t length = input.size();
@@ -116,12 +117,21 @@ std::pair<std::size_t, Token> Lexer::readNext(std::size_t startingIndex,
         }
 
         if (notAborted.size() == 0) {
-            // return pick();
             throw error(input, startingIndex, i);
         }
         i++;
     }
     return pick();
+}
+
+void Lexer::addDelimiters(const std::initializer_list<char>& list) {
+    for (char c : list) {
+        delimiters.push_back(Regex("\\" + std::string(1, c)));
+    }
+}
+
+void Lexer::addDelimiters(const std::string& expr) {
+    delimiters.push_back(Regex(expr));
 }
 
 std::string Lexer::error(const std::string& input, std::size_t from,
@@ -134,15 +144,4 @@ std::string Lexer::error(const std::string& input, std::size_t from,
         }
     }
     return "Unknown symbol '" + buffer + "'";
-}
-
-
-void Lexer::addDelimiters(const std::initializer_list<char>& list) {
-    for (char c : list) {
-        delimiters.push_back(Regex("\\" + std::string(1, c)));
-    }
-}
-
-void Lexer::addDelimiters(const std::string& expr) {
-    delimiters.push_back(Regex(expr));
 }

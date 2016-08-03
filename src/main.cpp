@@ -10,14 +10,33 @@
 
 int main(int, char**) {
     Lexer lexer;
-    lexer.addToken("T_NUMBER", "[0-9]+\\.?[0-9]*|\\.[0-9]+");
-    lexer.addToken("T_PLUS", "\\+");
-    lexer.addToken("T_TIMES", "\\*");
-    lexer.ignore(' ');
-    // lexer.addDelimiters({' ', '\r', '\n', '\t'});
-    lexer.addDelimiters("[^A-Za-z0-9_.]");
-    TRACE_IT(lexer.read("22 3.14 + * 7 + 9"));
+    // lexer.addToken("T_NUMBER", "[0-9]+\\.?[0-9]*|\\.[0-9]+");
+    // lexer.addToken("T_PLUS", "\\+");
+    // lexer.addToken("T_TIMES", "\\*");
+    // lexer.ignore(' ');
+    // lexer.addDelimiters("[^A-Za-z0-9_.]");
+    // TRACE_IT(lexer.read("22 3.14 + * 7 + 9"));
     // TRACE_IT(lexer.read("192.168.0.1"));
+
+
+    lexer.addToken("TYPE", "int|float|double|char|unsigned|string");
+    lexer.addToken("EQUAL", "=");
+    lexer.addToken("WHILE", "while");
+    lexer.addToken("(", "\\(");
+    lexer.addToken(")", "\\)");
+    lexer.addToken("{", "\\{");
+    lexer.addToken("}", "\\}");
+    lexer.addToken(";", ";");
+    lexer.addToken("ARITHMETIC_OPERATOR", "\\+|-|\\*|/|%");
+    lexer.addToken("COMPARATOR", "<|>|<=|>=|==");
+    lexer.addToken("BINARY_OPERATORS", "^|&|\\|");
+    lexer.addToken("NUMBER", "[0-9]+\\.?[0-9]*|\\.[0-9]+");
+    lexer.addToken("IDENTIFIER", "[A-Za-z_][A-Za-z0-9_]*");
+    lexer.ignore(' ');
+    lexer.ignore('\n');
+    lexer.addDelimiters("[^A-Za-z0-9_.]");
+    // TRACE_IT(lexer.read("int i = 0;"));
+    TRACE_IT(lexer.read("int i = 0;\nwhile ( i < size ) {\n\n}"));
     if (!lexer.accepts()) {
         TRACE(lexer.getError());
     } else {
