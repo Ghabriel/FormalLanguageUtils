@@ -387,9 +387,15 @@ std::size_t Regex::State::read(char c) const {
             char buffer = '\0';
             bool validBuffer = false;
             bool intervalMode = false;
+            bool invertClass = false;
             std::size_t length = pair.first.size();
             for (std::size_t i = 1; i < length - 1; i++) {
                 char s = pair.first[i];
+                if (s == '^' && i == 1) {
+                    invertClass = true;
+                    continue;
+                }
+
                 if (s == '-' && validBuffer) {
                     validBuffer = false;
                     intervalMode = true;
@@ -425,6 +431,10 @@ std::size_t Regex::State::read(char c) const {
 
             if (validBuffer && c == buffer) {
                 ok = true;
+            }
+
+            if (invertClass) {
+                ok = !ok;
             }
         } else if (pair.first == PATTERN_WILDCARD) {
             ok = true;
