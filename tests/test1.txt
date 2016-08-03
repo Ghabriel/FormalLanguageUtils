@@ -1,0 +1,6 @@
+int main( int, char** ) {
+	int i = 0;
+	while ( i < size ) {
+		i = i + 1;
+	}
+}

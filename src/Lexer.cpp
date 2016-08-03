@@ -38,7 +38,10 @@ std::vector<Token> Lexer::read(const std::string& input) {
             errorMessage = err;
             return tokens;
         }
-        tokens.push_back(std::move(pair.second));
+
+        if (pair.second.type != "") {
+            tokens.push_back(std::move(pair.second));
+        }
         i = pair.first;
     }
     return tokens;
@@ -57,7 +60,12 @@ std::pair<std::size_t, Token> Lexer::readNext(std::size_t startingIndex,
 
     std::size_t i = startingIndex;
     std::size_t length = input.size();
+    bool foundRelevantSymbol = false;
     auto pick = [&]() {
+        if (!foundRelevantSymbol) {
+            return std::make_pair(length, Token{"", ""});
+        }
+
         bool matched = false;
         TokenType type;
         std::size_t maxIndex;
@@ -82,8 +90,6 @@ std::pair<std::size_t, Token> Lexer::readNext(std::size_t startingIndex,
 
         return std::make_pair(maxIndex + 1, Token{type, buffer});
     };
-
-    bool foundRelevantSymbol = false;
     while (i < length) {
         char c = input[i];
         if (foundRelevantSymbol) {

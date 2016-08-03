@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 #include "CFG.hpp"
+#include "representations/BNF.hpp"
 #include "representations/DidacticNotation.hpp"
 
 using set = std::unordered_set<std::string>;
@@ -227,7 +228,7 @@ TEST_F(TestCFG, RecursionElimination) {
     // EXPECT_EQ(expected, cfg.withoutRecursion());
 }
 
-TEST_F(TestCFG, RepresentationExchange) {
+TEST_F(TestCFG, DidacticNotation) {
     auto test = CFG::create(DidacticNotation());
     ASSERT_NO_THROW(test << "S -> a A b | ");
     ASSERT_NO_THROW(test << "A -> a A | b A | ");
@@ -250,6 +251,31 @@ TEST_F(TestCFG, RepresentationExchange) {
     ASSERT_FALSE(test.nullable("B"));
     ASSERT_TRUE(test.nullable("C"));
     ASSERT_TRUE(test.nullable("D"));
+}
+
+TEST_F(TestCFG, BNF) {
+    auto test = CFG::create(BNF());
+    ASSERT_NO_THROW(test << "<S> ::= 'a'<A>'b' | ''");
+    ASSERT_NO_THROW(test << "<A> ::= 'a'<A> | 'b'<A> | ''");
+    EXPECT_EQ(set({"a", "b"}), test.getTerminals());
+    EXPECT_EQ(set({"<S>", "<A>"}), test.getNonTerminals());
+
+    test.clear();
+    test << "<S> ::= <S>'s' | <B><C><D>";
+    test << "<A> ::= <S><A>'a' | ''";
+    test << "<B> ::= <C>'c'";
+    test << "<C> ::= <B>'b' | <S>'s' | <A>";
+    test << "<D> ::= <D>'d' | <D><B> | ''";
+    ASSERT_EQ(set({"c"}), test.first("<S>"));
+    ASSERT_EQ(set({"c"}), test.first("<A>"));
+    ASSERT_EQ(set({"c"}), test.first("<B>"));
+    ASSERT_EQ(set({"c"}), test.first("<C>"));
+    ASSERT_EQ(set({"c", "d"}), test.first("<D>"));
+    ASSERT_FALSE(test.nullable("<S>"));
+    ASSERT_TRUE(test.nullable("<A>"));
+    ASSERT_FALSE(test.nullable("<B>"));
+    ASSERT_TRUE(test.nullable("<C>"));
+    ASSERT_TRUE(test.nullable("<D>"));
 }
 
 TEST_F(TestCFG, Copy) {
