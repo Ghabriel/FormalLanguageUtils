@@ -1,6 +1,7 @@
 /* created by Ghabriel Nunes <ghabriel.nunes@gmail.com> [2016] */
 #include <cassert>
 #include <stack>
+#include <utility>
 #include "Lexer.hpp"
 #include "utils.hpp"
 
@@ -68,7 +69,7 @@ std::pair<std::size_t, Token> Lexer::readNext(std::size_t startingIndex,
         }
 
         if (!matched) {
-            maxIndex = i;
+            throw error(input, startingIndex, i);
         }
 
         std::string buffer;
@@ -78,20 +79,21 @@ std::pair<std::size_t, Token> Lexer::readNext(std::size_t startingIndex,
             }
         }
 
-        if (!matched) {
-            throw "Unknown symbol '" + buffer + "'";
-        }
-
         return std::make_pair(maxIndex + 1, Token{type, buffer});
     };
 
     bool foundRelevantSymbol = false;
     while (i < length) {
         char c = input[i];
-        if (blacklist.count(c) > 0) {
-            if (foundRelevantSymbol) {
-                return pick();
+        if (foundRelevantSymbol) {
+            for (auto& regex : delimiters) {
+                if (regex.matches(c)) {
+                    return pick();
+                }
             }
+        }
+
+        if (blacklist.count(c) > 0) {
             i++;
             continue;
         }
@@ -114,9 +116,33 @@ std::pair<std::size_t, Token> Lexer::readNext(std::size_t startingIndex,
         }
 
         if (notAborted.size() == 0) {
-            return pick();
+            // return pick();
+            throw error(input, startingIndex, i);
         }
         i++;
     }
     return pick();
+}
+
+std::string Lexer::error(const std::string& input, std::size_t from,
+    std::size_t to) const {
+
+    std::string buffer;
+    for (std::size_t i = from; i <= to; i++) {
+        if (blacklist.count(input[i]) == 0) {
+            buffer += input[i];
+        }
+    }
+    return "Unknown symbol '" + buffer + "'";
+}
+
+
+void Lexer::addDelimiters(const std::initializer_list<char>& list) {
+    for (char c : list) {
+        delimiters.push_back(Regex("\\" + std::string(1, c)));
+    }
+}
+
+void Lexer::addDelimiters(const std::string& expr) {
+    delimiters.push_back(Regex(expr));
 }

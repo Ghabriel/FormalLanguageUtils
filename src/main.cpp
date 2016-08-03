@@ -14,9 +14,10 @@ int main(int, char**) {
     lexer.addToken("T_PLUS", "\\+");
     lexer.addToken("T_TIMES", "\\*");
     lexer.ignore(' ');
-    lexer.setDelimiters(" |+");
-    // TRACE_IT(lexer.read("22 3.14 + * 7 + 9"));
-    TRACE_IT(lexer.read("192.168.0.1"));
+    // lexer.addDelimiters({' ', '\r', '\n', '\t'});
+    lexer.addDelimiters("[^A-Za-z0-9_.]");
+    TRACE_IT(lexer.read("22 3.14 + * 7 + 9"));
+    // TRACE_IT(lexer.read("192.168.0.1"));
     if (!lexer.accepts()) {
         TRACE(lexer.getError());
     } else {

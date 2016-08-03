@@ -16,6 +16,7 @@ public:
     Regex();
     explicit Regex(const std::string&);
     void read(char);
+    bool matches(char);
     bool matches(const std::string&);
     bool matches() const;
     bool aborted() const;

@@ -320,6 +320,10 @@ void Regex::read(char c) {
     currentStates = std::move(newStates);
 }
 
+bool Regex::matches(char c) {
+    return matches(std::string(1, c));
+}
+
 bool Regex::matches(const std::string& input) {
     reset();
     for (char c : input) {

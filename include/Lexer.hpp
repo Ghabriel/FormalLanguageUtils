@@ -34,13 +34,17 @@ public:
 	bool accepts() const;
 	const std::string& getError() const;
 	std::vector<Token> read(const std::string&);
+	void addDelimiters(const std::initializer_list<char>&);
+	void addDelimiters(const std::string&);
 
 private:
 	std::unordered_map<TokenType, Regex> tokenTypes;
 	std::unordered_set<char> blacklist;
+	std::vector<Regex> delimiters;
 	std::string errorMessage;
 
 	std::pair<std::size_t, Token> readNext(std::size_t, const std::string&);
+	std::string error(const std::string&, std::size_t, std::size_t) const;
 };
 
 #endif
