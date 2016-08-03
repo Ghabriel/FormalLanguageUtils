@@ -40,10 +40,10 @@ private:
         bool ready = false;
     };
 
-    const std::string PATTERN_OR = "[|";
-    const std::string PATTERN_CONTEXT_START = "[(";
-    const std::string PATTERN_CONTEXT_END = "[)";
-    const std::string PATTERN_WILDCARD = "[.";
+    const static std::string PATTERN_OR;
+    const static std::string PATTERN_CONTEXT_START;
+    const static std::string PATTERN_CONTEXT_END;
+    const static std::string PATTERN_WILDCARD;
     std::string expression;
     std::vector<State> stateList;
     std::unordered_set<std::size_t> currentStates;

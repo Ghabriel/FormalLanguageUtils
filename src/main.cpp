@@ -10,8 +10,12 @@
 
 int main(int, char**) {
     // Regex regex("a|b(c|d){3,5}|e|.*$|[0-9]?");
-    Regex regex("ab+c");
-    TRACE(regex.matches("abbbbc"));
+    // Regex regex("(ba|a(ba)*a)*(ab)*");
+    // TRACE(regex.matches("bababaabababaaba"));
+    // TRACE(regex.matches("bababa"));
+
+    // Regex regex("(a|b)+c*");
+    // TRACE(regex.matches("c"));
 
     // Lexer lexer;
     // lexer.addToken("T_NUMBER", "[0-9]+\\.?[0-9]*|\\.[0-9]+");

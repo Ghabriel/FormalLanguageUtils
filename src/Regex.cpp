@@ -1,8 +1,15 @@
 /* created by Ghabriel Nunes <ghabriel.nunes@gmail.com> [2016] */
+#include <algorithm>
 #include <cassert>
 #include <queue>
+#include <stack>
 #include "Regex.hpp"
 #include "utils.hpp"
+
+const std::string Regex::PATTERN_OR = "[|";
+const std::string Regex::PATTERN_CONTEXT_START = "[(";
+const std::string Regex::PATTERN_CONTEXT_END = "[)";
+const std::string Regex::PATTERN_WILDCARD = "[.";
 
 Regex::Regex() {}
 
@@ -126,38 +133,58 @@ Regex::Regex(const std::string& expr) : expression(expr) {
     end.special = true;
     tokens.push_back(std::move(end));
 
-    // for (i = 0; i < tokens.size(); i++) {
-    //     tokens[i].id = i;
-    //     debug(tokens[i]);
-    //     ECHO("");
-    // }
-    // assert(false);
-
     build(tokens);
 }
 
 void Regex::build(std::deque<Regex::Composition>& tokens) {
-    // Expands tokes until [min,max] = [0,1] or [1,1] or [0,inf] for all of them
+    // Expands tokens until [min,max] = [0,1] or [1,1] or [0,inf] for all of them
     std::deque<Composition> newList;
+    auto normalizeToken = [&](const Composition& token, bool push) {
+        Composition newToken;
+        newToken.pattern = token.pattern;
+        newToken.min = (token.min == 0) ? 0 : token.min - 1;
+        newToken.max = (token.max == -1) ? -1 : token.max - 1;
+        if (token.min == 0 && token.max == -1) {
+            newToken.ready = true;
+        }
+        newToken.nestingLevel = token.nestingLevel;
+        newToken.special = token.special;
+        if (push) {
+            newList.push_back(std::move(token));
+        }
+        tokens.pop_front();
+        tokens.push_front(std::move(newToken));
+    };
     while (!tokens.empty()) {
         Composition& token = tokens.front();
-        // TODO: remove duplicated code
         if ((token.min != 0 || token.max != 1)
             && (token.min != 1 || token.max != 1)
-            && !token.ready
-            /*&& (token.min != 0 || token.max != -1)*/) {
-            Composition newToken;
-            newToken.pattern = token.pattern;
-            newToken.min = (token.min == 0) ? 0 : token.min - 1;
-            newToken.max = (token.max == -1) ? -1 : token.max - 1;
-            if (token.min == 0 && token.max == -1) {
-                newToken.ready = true;
+            && !token.ready) {
+
+            bool push = true;
+            if (token.pattern == PATTERN_CONTEXT_END) {
+                // The multiplier applies to the group
+                std::size_t currSize = newList.size();
+                std::size_t index = currSize - 1;
+                int level = 0;
+                for (auto& t : utils::make_reverse(newList)) {
+                    if (t.pattern == PATTERN_CONTEXT_START && level == 0) {
+                        break;
+                    } else if (t.pattern == PATTERN_CONTEXT_START) {
+                        level--;
+                    } else if (t.pattern == PATTERN_CONTEXT_END) {
+                        level++;
+                    }
+                    index--;
+                }
+                newList.push_back(token);
+                while (index < currSize) {
+                    newList.push_back(newList[index]);
+                    index++;
+                }
+                push = false;
             }
-            newToken.nestingLevel = token.nestingLevel;
-            newToken.special = token.special;
-            newList.push_back(std::move(token));
-            tokens.pop_front();
-            tokens.push_front(std::move(newToken));
+            normalizeToken(token, push);
         } else {
             newList.push_back(std::move(token));
             tokens.pop_front();
@@ -167,16 +194,27 @@ void Regex::build(std::deque<Regex::Composition>& tokens) {
     tokens.swap(newList);
     std::size_t i = 0;
     std::size_t size = tokens.size();
-    // for (i = 0; i < tokens.size(); i++) {
-    //     tokens[i].id = i;
-    //     debug(tokens[i]);
-    //     ECHO("");
-    // }
-    // assert(false);
 
+    // Links all closing brackets to its opening counterparts
+    std::unordered_map<std::size_t, std::size_t> bracketOpenings;
+    std::stack<std::size_t> bracketStack;
+    while (i < size) {
+        if (tokens[i].pattern == PATTERN_CONTEXT_START) {
+            bracketStack.push(i);
+        } else if (tokens[i].pattern == PATTERN_CONTEXT_END) {
+            assert(!bracketStack.empty());
+            bracketOpenings[i] = bracketStack.top();
+            bracketStack.pop();
+        }
+        i++;
+    }
+    assert(bracketStack.empty());
+
+    i = 0;
     // Calculates all next references
     while (i < size - 1) {
         if (tokens[i].pattern == PATTERN_CONTEXT_START) {
+            // Context-starters point to the starting symbol of all branches
             tokens[i].next.push_back(i + 1);
             unsigned level = tokens[i].nestingLevel;
             std::size_t j = i + 1;
@@ -187,8 +225,10 @@ void Regex::build(std::deque<Regex::Composition>& tokens) {
                 j++;
             }
         } else if (tokens[i + 1].pattern != PATTERN_OR) {
+            // Simple symbols point to the next symbol
             tokens[i].next = {i + 1};
         } else {
+            // The | operator points to the next )
             std::size_t j = i + 1;
             int count = 0;
             // Will always find a match since the last token is a )
@@ -227,10 +267,19 @@ void Regex::build(std::deque<Regex::Composition>& tokens) {
                     stateList[from].spontaneous.insert(to);
                 } else {
                     stateList[from].transitions[token.pattern] = to;
-                    if (token.min == 0) {
-                        stateList[from].spontaneous.insert(to);
+                }
+
+                if (token.min == 0) {
+                    if (token.pattern == PATTERN_CONTEXT_END) {
+                        stateList[entityToState[bracketOpenings[i]]].spontaneous.insert(from);
                     }
-                    if (token.max == -1 && token.ready) {
+                    stateList[from].spontaneous.insert(to);
+                }
+
+                if (token.max == -1 && token.ready) {
+                    if (token.special) {
+                        stateList[from].spontaneous.insert(entityToState[bracketOpenings[i]]);
+                    } else {
                         stateList[from].spontaneous.insert(entityToState[i - 1]);
                     }
                 }
@@ -239,29 +288,24 @@ void Regex::build(std::deque<Regex::Composition>& tokens) {
         i++;
     }
 
-    for (i = 0; i < tokens.size(); i++) {
-        tokens[i].id = i;
-        debug(tokens[i]);
-        ECHO("");
-    }
     reset();
 
-    // ECHO("-----");
-    // for (auto& pair : entityToState) {
-    //     TRACE(pair.first);
-    //     TRACE(pair.second);
+    // for (i = 0; i < tokens.size(); i++) {
+    //     tokens[i].id = i;
+    //     debug(tokens[i]);
+    //     ECHO("");
     // }
 
-    for (std::size_t i = 0; i < stateList.size(); i++) {
-        ECHO(std::to_string(i) + ":");
-        for (auto& pair : stateList[i].transitions) {
-            ECHO("\t" + pair.first + " -> " + std::to_string(pair.second));
-        }
-        for (auto& index : stateList[i].spontaneous) {
-            ECHO("\t& -> " + std::to_string(index));
-        }
-    }
-    TRACE(acceptingState);
+    // for (std::size_t i = 0; i < stateList.size(); i++) {
+    //     ECHO(std::to_string(i) + ":");
+    //     for (auto& pair : stateList[i].transitions) {
+    //         ECHO("\t" + pair.first + " -> " + std::to_string(pair.second));
+    //     }
+    //     for (auto& index : stateList[i].spontaneous) {
+    //         ECHO("\t& -> " + std::to_string(index));
+    //     }
+    // }
+    // TRACE(acceptingState);
 }
 
 void Regex::read(char c) {
@@ -273,11 +317,6 @@ void Regex::read(char c) {
         }
     }
     expandSpontaneous(newStates);
-    // TRACE(c);
-    // std::vector<std::size_t> container(newStates.begin(), newStates.end());
-    // std::sort(container.begin(), container.end());
-    // TRACE_IT(container);
-    // ECHO("");
     currentStates = std::move(newStates);
 }
 
@@ -338,6 +377,7 @@ void Regex::debug(const Composition& comp) const {
     } else {
         TRACE_L("comp.next", "undefined");
     }
+    TRACE(comp.ready);
 }
 
 std::size_t Regex::State::read(char c) const {
@@ -386,7 +426,7 @@ std::size_t Regex::State::read(char c) const {
             if (validBuffer && c == buffer) {
                 ok = true;
             }
-        } else if (pair.first.front() == '[' && pair.first.back() == '.') {
+        } else if (pair.first == PATTERN_WILDCARD) {
             ok = true;
         } else if (c == pair.first.front()) {
             ok = true;
