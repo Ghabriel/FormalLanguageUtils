@@ -2,7 +2,6 @@
 
 #include <gtest/gtest.h>
 #include "Regex.hpp"
-#include "utils.hpp"
 
 class TestRegex : public ::testing::Test {};
 

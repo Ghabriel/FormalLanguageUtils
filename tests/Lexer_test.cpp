@@ -8,18 +8,26 @@ protected:
     Lexer lexer;
 };
 
-// TEST_F(TestLexer, Test1) {
-//     lexer.add("NUMBER", "[0-9]+\\.?[0-9]*|\\.[0-9]+");
-//     lexer.add("ASSIGNMENT", "=");
-//     lexer.add("IDENTIFIER", "[A-Za-z_]+[A-Za-z0-9_]*");
-//     lexer.read("aaabbab");
-//     ASSERT_TRUE(lexer.accepts());
+TEST_F(TestLexer, Test1) {
+    lexer.addToken("T_NUMBER", "[0-9]+\\.?[0-9]*|\\.[0-9]+");
+    lexer.addToken("T_PLUS", "\\+");
+    lexer.addToken("T_TIMES", "\\*");
+    lexer.ignore(' ');
 
-//     std::queue<std::string> tokens;
-//     ASSERT_NO_THROW(tokens = grammar.tokens());
-//     std::queue<std::string> expected;
-//     expected.push("");
-// }
+    std::vector<Token> tokens;
+    ASSERT_NO_THROW(tokens = lexer.read("22 3.14 + * 7 + 9"));
+    ASSERT_TRUE(lexer.accepts());
+
+    std::vector<Token> expected;
+    expected.push_back({"T_NUMBER", "22"});
+    expected.push_back({"T_NUMBER", "3.14"});
+    expected.push_back({"T_PLUS", "+"});
+    expected.push_back({"T_TIMES", "*"});
+    expected.push_back({"T_NUMBER", "7"});
+    expected.push_back({"T_PLUS", "+"});
+    expected.push_back({"T_NUMBER", "9"});
+    EXPECT_EQ(expected, tokens);
+}
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
