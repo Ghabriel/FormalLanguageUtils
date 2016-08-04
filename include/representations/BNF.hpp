@@ -41,7 +41,6 @@ public:
     }
 
     std::vector<std::string> toSymbolSequence(const std::string& input) const override {
-        TRACE(input);
         std::vector<std::string> result;
         std::stack<char> openings;
         std::string buffer;
@@ -55,10 +54,10 @@ public:
                 if (((c == '"' || c == '\'') && c == openings.top())
                     || (c == '>' && openings.top() == '<')) {
 
-                    buffer = openings.top() + buffer + c;
-                    // if (c == '>') {
-                    //     buffer = '<' + buffer + '>';
-                    // }
+                    // buffer = openings.top() + buffer + c;
+                    if (c == '>') {
+                        buffer = '<' + buffer + '>';
+                    }
 
                     if (!buffer.empty()) {
                         result.push_back(std::move(buffer));

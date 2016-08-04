@@ -88,24 +88,7 @@ void CFG::prepareFirst() const {
 }
 
 std::unordered_set<CFG::Symbol> CFG::first(const CFG::BNF& symbolSequence) const {
-    std::vector<Symbol> symbols = toSymbolSequence(symbolSequence);
-    std::unordered_set<Symbol> result;
-    updateFirst();
-    for (Symbol& symbol : symbols) {
-        if (isTerminal(symbol)) {
-            result.insert(symbol);
-            break;
-        }
-        select(symbol, [&result](const Production& prod) {
-            for (auto& s : prod.firstSet) {
-                result.insert(s);
-            }
-        });
-        if (!nullable(symbol)) {
-            break;
-        }
-    }
-    return result;
+    return groupedFirst(toSymbolSequence(symbolSequence));
 }
 
 std::unordered_set<CFG::Symbol> CFG::follow(const Symbol& nonTerminal) const {
@@ -131,11 +114,11 @@ std::unordered_set<CFG::Symbol> CFG::follow(const Symbol& nonTerminal) const {
             if (!isTerminal(symbol)) {
                 bool isNullable = true;
                 for (std::size_t j = i + 1; j < numProducts; j++) {
-                    for (auto& s : first(prod[j])) {
+                    for (auto& s : groupedFirst({prod[j]})) {
                         followSet[symbol].insert(s);
                     }
 
-                    if (!nullable(prod[j])) {
+                    if (!groupedNullable({prod[j]})) {
                         isNullable = false;
                         break;
                     }
@@ -191,14 +174,7 @@ std::unordered_set<CFG::Symbol> CFG::follow(const Symbol& nonTerminal) const {
 }
 
 bool CFG::nullable(const CFG::BNF& symbolSequence) const {
-    std::vector<Symbol> symbols = toSymbolSequence(symbolSequence);
-    updateFirst();
-    for (Symbol& symbol : symbols) {
-        if (isTerminal(symbol) || !nullabilityBySymbol[symbol]) {
-            return false;
-        }
-    }
-    return true;
+    return groupedNullable(toSymbolSequence(symbolSequence));
 }
 
 bool CFG::endable(const Symbol& symbol) const {
@@ -418,6 +394,26 @@ void CFG::select(const CFG::Symbol& symbol,
     }
 }
 
+std::unordered_set<CFG::Symbol> CFG::groupedFirst(const std::vector<CFG::Symbol>& symbols) const {
+    std::unordered_set<Symbol> result;
+    updateFirst();
+    for (const Symbol& symbol : symbols) {
+        if (isTerminal(symbol)) {
+            result.insert(symbol);
+            break;
+        }
+        select(symbol, [&result](const Production& prod) {
+            for (auto& s : prod.firstSet) {
+                result.insert(s);
+            }
+        });
+        if (!nullable(symbol)) {
+            break;
+        }
+    }
+    return result;
+}
+
 void CFG::updateFirst() const {
     if (isFirstValid) {
         return;
@@ -513,6 +509,16 @@ void CFG::updateFirst() const {
 
     isFirstValid = true;
     // assert(false);
+}
+
+bool CFG::groupedNullable(const std::vector<CFG::Symbol>& symbols) const {
+    updateFirst();
+    for (const Symbol& symbol : symbols) {
+        if (isTerminal(symbol) || !nullabilityBySymbol[symbol]) {
+            return false;
+        }
+    }
+    return true;
 }
 
 void CFG::updateNullability(std::size_t index, std::unordered_set<std::size_t>& visited,

@@ -217,9 +217,17 @@ private:
     // Complexity: O(f), where f is the complexity of the callback.
     void select(const Symbol&, const std::function<void(const Production&)>&) const;
 
+    // Returns the first set of a vector of symbols.
+    // Complexity: O(s + L) on first call, O(L) on subsequent calls
+    std::unordered_set<Symbol> groupedFirst(const std::vector<Symbol>&) const;
+
     // Calculates the first set of all non-terminals of this CFG.
     // Complexity: O(s) on first call, O(1) on subsequent calls
     void updateFirst() const;
+
+    // Checks if a vector of symbols is able to derive the empty string.
+    // Complexity: O(s + L) on first call, O(L) on subsequent calls
+    bool groupedNullable(const std::vector<Symbol>&) const;
 
     // Updates the nullability information about a production
     // and all other productions it references.
