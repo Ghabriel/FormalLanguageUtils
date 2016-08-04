@@ -8,8 +8,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "representations/CFGRepresentation.hpp"
 
-class CFGRepresentation;
 class CFG;
 
 class Production {
@@ -191,6 +191,12 @@ public:
     // Complexity: O(s)
     BNF debug() const;
 
+    std::vector<Production>::const_iterator begin() const;
+    std::vector<Production>::const_iterator end() const;
+
+    template<typename T>
+    static CFG changeNotation(const CFG&, const T&);
+
 private:
     std::vector<Production> productions;
     std::unordered_map<Symbol, std::vector<std::size_t>> productionsBySymbol;
@@ -268,6 +274,20 @@ template<typename... Args>
 CFG& CFG::add(const Symbol& name, const BNF& production, Args... args) {
     add(name, production);
     return add(name, args...);
+}
+
+template<typename T>
+CFG CFG::changeNotation(const CFG& cfg, const T& notation) {
+    auto result = CFG::create(notation);
+    for (auto& production : cfg) {
+        std::string readableForm = cfg.toReadableForm(production);
+        auto parts = cfg.getRepresentation().decompose(readableForm);
+        assert(parts.size() > 0);
+        Production prod(std::move(parts.front().name));
+        prod.products = std::move(parts.front().products);
+        result.internalAdd(prod);
+    }
+    return result;
 }
 
 #endif

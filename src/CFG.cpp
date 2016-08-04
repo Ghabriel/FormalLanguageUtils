@@ -3,7 +3,6 @@
 #include <cassert>
 #include <queue>
 #include "CFG.hpp"
-#include "representations/CFGRepresentation.hpp"
 #include "representations/SimplifiedBNF.hpp"
 
 std::shared_ptr<const CFGRepresentation> CFG::defaultRepresentation(new SimplifiedBNF());
@@ -363,6 +362,14 @@ CFG::BNF CFG::debug() const {
         content += '\n';
     }
     return content;
+}
+
+std::vector<Production>::const_iterator CFG::begin() const {
+    return productions.begin();
+}
+
+std::vector<Production>::const_iterator CFG::end() const {
+    return productions.end();
 }
 
 std::vector<CFG::Symbol> CFG::toSymbolSequence(const CFG::BNF& input) const {

@@ -1,5 +1,10 @@
-<E> ::= <T> <E1>
-<E1> ::= "+" <T> <E1> | ""
-<T> ::= <F> <T1>
-<T1> ::= "*" <F> <T1> | ""
-<F> ::= "(" <E> ")" | "id"
+<program> ::= <command> <program> | <declaration> <program> | ""
+<command> ::= <opt-type> "IDENTIFIER" "ASSIGNMENT" <expression> ";"
+<declaration> ::= <function-declaration>
+<function-declaration> ::= "TYPE" "IDENTIFIER" "(" <opt-arglist> ")" "{" <program> "}"
+<arglist> ::= "TYPE" <opt-identifier> <opt-moreargs>
+
+<opt-type> ::= "TYPE" | ""
+<opt-arglist> ::= <arglist> | ""
+<opt-moreargs> ::= "," <arglist> | ""
+<opt-identifier> ::= "IDENTIFIER" | ""

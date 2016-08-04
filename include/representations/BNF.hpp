@@ -21,9 +21,12 @@ public:
     }
 
     std::vector<ProductionParts> decompose(const std::string& group) const override {
-        const static std::regex valid("(<[A-Za-z0-9_']+>) ?::= ?(.*)");
+        const static std::regex valid("(<[A-Za-z0-9_'-]+>) ?::= ?(.*)");
         std::smatch matches;
         std::regex_match(group, matches, valid);
+        if (matches.size() == 0) {
+            TRACE_L("group", "[" + group + "]");
+        }
         assert(matches.size() > 0);
         std::string buffer;
         std::string productions = matches[2];
@@ -80,7 +83,12 @@ public:
 
         std::string result = name + " ::= ";
         for (auto& symbol : products) {
-            result += symbol;
+            if (isTerminal(symbol)) {
+                char separator = (symbol == "\"") ? '\'' : '"';
+                result += separator + symbol + separator;
+            } else {
+                result += symbol;            
+            }
         }
         return result;
     }

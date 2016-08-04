@@ -61,9 +61,9 @@ public:
     std::string toReadableForm(const std::string& name,
         const std::vector<std::string>& products) const override {
 
-        std::string result = name + " -> ";
+        std::string result = name + " ->";
         for (auto& symbol : products) {
-            result += symbol;
+            result += " " + symbol;
         }
         return result;
     }

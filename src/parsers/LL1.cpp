@@ -1,4 +1,6 @@
+/* created by Ghabriel Nunes <ghabriel.nunes@gmail.com> [2016] */
 #include <cassert>
+#include "Lexer.hpp"
 #include "parsers/LL1.hpp"
 #include "utils.hpp"
 
@@ -43,15 +45,15 @@ parser::LL1::LL1(const CFG& cfg) : Parser(cfg) {
     // }
 }
 
-ParseResults parser::LL1::parse(const std::vector<Parser::Symbol>& input) {
+ParseResults parser::LL1::parse(const std::vector<Token>& input) {
     assert(canParse());
     ParseResults result;
     std::size_t length = input.size();
-    std::stack<Symbol> stack;
+    std::stack<TokenType> stack;
     stack.push(END_OF_SENTENCE);
     stack.push(getCFG()[0].getName());
     for (std::size_t i = 0; i <= length; i++) {
-        const Symbol& symbol = (i < length) ? input[i] : END_OF_SENTENCE;
+        const TokenType& symbol = (i < length) ? input[i].type : END_OF_SENTENCE;
         result = unwind(stack, symbol);
         if (!result.accepted) {
             return error(input, i, result.errorMessage);
@@ -103,7 +105,7 @@ ParseResults parser::LL1::unwind(std::stack<Symbol>& stack, const Symbol& input)
     return result;
 }
 
-ParseResults parser::LL1::error(const std::vector<Symbol>& input,
+ParseResults parser::LL1::error(const std::vector<Token>& input,
     std::size_t index, const std::string& message) const {
 
     ParseResults result;
@@ -111,13 +113,13 @@ ParseResults parser::LL1::error(const std::vector<Symbol>& input,
     result.errorIndex = index;
     result.errorMessage = "Error: " + message + "\n";
     for (std::size_t i = 0; i < index; i++) {
-        result.errorMessage += input[i];
+        result.errorMessage += input[i].content;
     }
 
     if (index < input.size()) {
-        result.errorMessage += ("\033[1;31m" + input[index] + "\033[0m");
+        result.errorMessage += ("\033[1;31m" + input[index].content + "\033[0m");
         for (std::size_t i = index + 1; i < input.size(); i++) {
-            result.errorMessage += input[i];
+            result.errorMessage += input[i].content;
         }
     }
 

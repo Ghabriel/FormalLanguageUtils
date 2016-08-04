@@ -7,13 +7,39 @@
 #include "DFA.hpp"
 #include "Lexer.hpp"
 #include "parsers/LL1.hpp"
+#include "parsers/SLR1.hpp"
 #include "representations/BNF.hpp"
 #include "representations/DidacticNotation.hpp"
 
 int main(int, char**) {
+    Lexer lexer;
+    lexer.addToken("SYMBOL", ".");
+    lexer.addDelimiters(".");
+
+    auto tokens = lexer.read("aaabbb");
+    TRACE_IT(tokens);
+
+    auto cfg = CFG::create(BNF());
+    cfg << "<S> ::= 'a' <S> 'b' | 'a' 'b'";
+    parser::SLR1 parser(cfg);
+    if (parser.canParse()) {
+        ParseResults results = parser.parse(tokens);
+        if (results.accepted) {
+            ECHO("OK");
+        } else {
+            // TRACE(results.errorIndex);
+            ECHO(results.errorMessage);
+        }
+    } else {
+        ECHO("Error: not a valid SLR(1) grammar");
+    }
+
+
     // std::ifstream stream("tests/test1.txt");
     // std::string input((std::istreambuf_iterator<char>(stream)),
     //                   (std::istreambuf_iterator<char>()));
+    // stream.close();
+
     // Lexer lexer;
     // lexer.addToken("TYPE", "int|float|double|char|unsigned|string");
     // lexer.addToken("WHILE", "while");
@@ -34,43 +60,32 @@ int main(int, char**) {
     // lexer.ignore('\t');
     // lexer.addDelimiters("[^A-Za-z0-9_.]");
 
-    // TRACE_IT(lexer.read(input));
+    // auto tokens = lexer.read(input);
+    // TRACE_IT(tokens);
     // if (!lexer.accepts()) {
     //     TRACE(lexer.getError());
     // } else {
     //     ECHO("OK");
     // }
 
-    // CFG cfg;
-    // cfg << "<E> ::= <T><E1>";
-    // cfg << "<E1> ::= +<T><E1>|";
-    // cfg << "<T> ::= <F><T1>";
-    // cfg << "<T1> ::= *<F><T1>|";
-    // cfg << "<F> ::= (<E>)|i";
-
-    // auto cfg = CFG::create(DidacticNotation());
-    // cfg << "E -> T E1";
-    // cfg << "E1 -> + T E1 | ";
-    // cfg << "T -> F T1";
-    // cfg << "T1 -> * F T1 | ";
-    // cfg << "F -> ( E ) | id";
-
-    auto cfg = CFG::create(BNF());
-    std::ifstream stream("tests/grammar1_bnf.txt");
-    std::string line;
-    while (std::getline(stream, line)) {
-        cfg << line;
-    }
-    parser::LL1 parser(cfg);
-    if (parser.canParse()) {
-        ParseResults results = parser.parse({"id", "+", "+", "id", "*","id"});
-        if (results.accepted) {
-            ECHO("OK");
-        } else {
-            // TRACE(results.errorIndex);
-            ECHO(results.errorMessage);
-        }
-    } else {
-        ECHO("Error: not a valid LL(1) grammar");
-    }
+    // auto cfg = CFG::create(BNF());
+    // stream = std::ifstream("tests/grammar1_bnf.txt");
+    // std::string line;
+    // while (std::getline(stream, line)) {
+    //     if (!line.empty()) {
+    //         cfg << line;        
+    //     }
+    // }
+    // parser::LL1 parser(cfg);
+    // if (parser.canParse()) {
+    //     ParseResults results = parser.parse(tokens);
+    //     if (results.accepted) {
+    //         ECHO("OK");
+    //     } else {
+    //         // TRACE(results.errorIndex);
+    //         ECHO(results.errorMessage);
+    //     }
+    // } else {
+    //     ECHO("Error: not a valid LL(1) grammar");
+    // }
 }
