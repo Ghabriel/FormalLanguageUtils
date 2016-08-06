@@ -1,48 +1,73 @@
+#include <functional>
 #include <iostream>
+#include <iterator>
+#include <unordered_set>
 #include <vector>
 
-template<template<typename T> typename C, typename... Args>
+template<typename T, template<typename...> class C>
 class composite_iterator {
 public:
-    composite_iterator(const C<T>& iterable, Args&&... args) {
-        init(iterable, args...);
-    }
-
+    template<typename... Args>
     void init(const C<T>& iterable, Args&&... args) {
-        iterables.push_back(std::make_pair(iterable.begin(), iterable.end()));
+        iterables.push_back(iterable);
         init(args...);
     }
 
     void init() {
-        currValue = iterables[index].first;
+        index = 0;
+        currValue = iterables[index].get().begin();
     }
 
     auto begin() {
-        return iterables[0].first;
+        init();
+        return *this;
     }
 
-    composite_iterator<C<T>>& operator++() {
+    auto end() {
+        index = iterables.size() - 1;
+        currValue = iterables[index].get().end();
+        return *this;
+    }
+
+    composite_iterator<T, C>& operator++() {
         ++currValue;
-        if (currValue == iterables[index].second && index < iterables.size() - 1) {
+        if (currValue == iterables[index].get().end() && index < iterables.size() - 1) {
             index++;
-            currValue = iterables[index].first;
+            currValue = iterables[index].get().begin();
         }
+        return *this;
     }
 
-    T& operator*() {
+    const T& operator*() {
         return *currValue;
     }
 
+    bool operator==(const composite_iterator<T, C>& other) const {
+        return index == other.index && currValue == other.currValue;
+    }
+
+    bool operator!=(const composite_iterator<T, C>& other) const {
+        return !(*this == other);
+    }
+
 private:
-    std::vector<std::pair<T::iterator, T::iterator>> iterables;
-    std::size_t index = 0;
-    C<T>::iterator currValue;
+    std::vector<std::reference_wrapper<const C<T>>> iterables;
+    std::size_t index;
+    typename C<T>::const_iterator currValue;
 };
+
+template<typename T, template<typename...> class C, typename... Args>
+auto make_composite(const C<T>& iterable, Args&&... args) {
+    composite_iterator<T, C> instance;
+    instance.init(iterable, args...);
+    return instance;
+}
 
 int main(int, char**) {
     std::vector<int> a{1, 2, 3};
     std::vector<int> b{4, 5, 6};
-    for (int i : composite_iterator(a, b)) {
+    std::vector<int> c{7, 8, 9};
+    for (int i : make_composite(a, b, c)) {
         std::cout << i << std::endl;
     }
 }
