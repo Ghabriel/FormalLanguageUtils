@@ -8,6 +8,11 @@
 #include "Parser.hpp"
 
 namespace parser {
+    struct AscendingAction {
+        Action action = Action::UNKNOWN;
+        std::size_t target;
+    };
+
     class SLR1 : public Parser {
     public:
         using Parser::Symbol;
@@ -18,7 +23,7 @@ namespace parser {
         bool canParse() const override;
 
     private:
-        std::unordered_map<Symbol, std::unordered_map<TokenType, unsigned>> table;
+        std::unordered_map<std::size_t, std::unordered_map<TokenType, AscendingAction>> table;
         bool conflict = false;
     };
 }

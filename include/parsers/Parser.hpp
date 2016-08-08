@@ -30,6 +30,28 @@ public:
     virtual ParseResults parse(const std::vector<Token>&) = 0;
     virtual bool canParse() const = 0;
 
+protected:
+    ParseResults error(const std::vector<Token>& input,
+        std::size_t index, const std::string& message) const {
+
+        ParseResults result;
+        result.accepted = false;
+        result.errorIndex = index;
+        result.errorMessage = "Error: " + message + "\n";
+        for (std::size_t i = 0; i < index; i++) {
+            result.errorMessage += input[i].content;
+        }
+
+        if (index < input.size()) {
+            result.errorMessage += ("\033[1;31m" + input[index].content + "\033[0m");
+            for (std::size_t i = index + 1; i < input.size(); i++) {
+                result.errorMessage += input[i].content;
+            }
+        }
+
+        return result;
+    }
+
 private:
     CFG cfg;
 };
@@ -207,14 +229,14 @@ namespace parser {
             }
         }
 
-        ECHO("########################");
-        std::size_t i = 0;
-        for (auto& state : result) {
-            ECHO(i++);
-            printState(state, copy);
-            ECHO("----------------------");
-        }
-        ECHO("END");
+        // ECHO("########################");
+        // std::size_t i = 0;
+        // for (auto& state : result) {
+        //     ECHO(i++);
+        //     printState(state, copy);
+        //     ECHO("----------------------");
+        // }
+        // ECHO("END");
         return result;
     }
 }

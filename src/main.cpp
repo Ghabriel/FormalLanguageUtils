@@ -13,7 +13,9 @@
 
 int main(int, char**) {
     Lexer lexer;
-    lexer.addToken("SYMBOL", ".");
+    // lexer.addToken("SYMBOL", ".");
+    lexer.addToken("a", "a");
+    lexer.addToken("b", "b");
     lexer.addDelimiters(".");
 
     auto tokens = lexer.read("aaabbb");
